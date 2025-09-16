@@ -24,7 +24,8 @@ sqlx = { version = "0.7", features = [
     "postgres",
     "macros",
     "uuid",
-    "time"
+    "chrono",
+    "offline"
 ] }
 pgvector = { version = "0.3", features = ["sqlx"] }
 

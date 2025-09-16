@@ -11,13 +11,37 @@ impl UserRepository {
         Self { pool }
     }
 
-    pub async fn create(&self, user_dto: CreateUserDto, password_hash: String, salt: String) -> Result<User, sqlx::Error> {
+    pub async fn create(&self, user_dto: CreateUserDto, password_hash: String, salt: Vec<u8>) -> Result<User, sqlx::Error> {
         let user = sqlx::query_as!(
             User,
             r#"
-            INSERT INTO users (username, email, phone_number, password_hash, salt, is_email_verified, is_phone_verified, login_method, created_at, updated_at)
+            INSERT INTO users 
+            (
+                username, 
+                email, 
+                phone_number, 
+                password_hash, 
+                salt, 
+                is_email_verified, 
+                is_phone_verified, 
+                login_method, 
+                created_at, 
+                updated_at
+            )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            RETURNING id, username, email, phone_number, password_hash, salt, is_email_verified, is_phone_verified, login_method as "login_method: LoginMethod", created_at, updated_at, deleted_at
+            RETURNING 
+                id, 
+                username, 
+                email, 
+                phone_number, 
+                password_hash, 
+                salt, 
+                is_email_verified, 
+                is_phone_verified, 
+                login_method as "login_method: LoginMethod", 
+                created_at, 
+                updated_at, 
+                deleted_at
             "#,
             user_dto.username,
             user_dto.email,

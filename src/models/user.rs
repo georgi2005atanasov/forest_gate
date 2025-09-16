@@ -18,7 +18,7 @@ pub struct User {
     pub email: String,
     pub phone_number: Option<String>,
     pub password_hash: String,
-    pub salt: String,
+    pub salt: Vec<u8>,
     pub is_email_verified: bool,
     pub is_phone_verified: bool,
     pub login_method: LoginMethod,
