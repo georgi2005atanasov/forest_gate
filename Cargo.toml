@@ -1,0 +1,50 @@
+[package]
+name = "forest_gate"
+version = "0.1.0"
+edition = "2021" # 2024 not stable yet, use 2021
+
+[dependencies]
+# Core
+actix-web = "4.9.0"
+actix-cors = "0.7.0"
+tokio = { version = "1.40.0", features = ["rt-multi-thread", "macros"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+validator = { version = "0.18", features = ["derive"] }
+
+# Sessions & Redis
+actix-session = "0.10.1"
+actix-redis = "0.13.0"
+deadpool-redis = "0.18.0"
+# alternatively: redis = "0.27.0"
+
+# Database & vectors
+sqlx = { version = "0.7", features = [
+    "runtime-tokio-rustls",
+    "postgres",
+    "macros",
+    "uuid",
+    "time"
+] }
+pgvector = { version = "0.3", features = ["sqlx"] }
+
+# Auth & crypto
+argon2 = "0.5.3"
+password-hash = "0.5.0"
+jsonwebtoken = { version = "9.3.0", features = ["use_pem"] }
+ed25519-dalek = "2.1.1"
+totp-rs = "5.5.0"
+
+# Email
+lettre = { version = "0.11.6", features = ["tokio1-native-tls"] }
+
+# DX / Docs / Observability
+utoipa = "5.4.0"
+utoipa-swagger-ui = "6.0.0"
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
+tracing-actix-web = "0.7.0"
+config = "0.15.0"
+dotenvy = "0.15.7"
+secrecy = "0.10.3"
+chrono = { version = "0.4.42", features = ["serde"] }
