@@ -39,8 +39,8 @@ totp-rs = "5.5.0"
 lettre = { version = "0.11.6", features = ["tokio1-native-tls"] }
 
 # DX / Docs / Observability
-utoipa = "5.4.0"
-utoipa-swagger-ui = "6.0.0"
+utoipa = { version = "5", features = ["actix_extras"] }
+utoipa-swagger-ui = { version = "8", features = ["actix-web"] }
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
 tracing-actix-web = "0.7.0"
