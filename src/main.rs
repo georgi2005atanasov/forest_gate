@@ -1,28 +1,30 @@
 mod config;
+mod feature;
+mod infrastructure;
 mod swagger;
 mod utils;
-mod feature;
 
 use actix_cors::Cors;
 use actix_web::{middleware::Logger, web, App, HttpServer};
+use config::traits::Env;
+use infrastructure::persistence::{db, redis};
 use swagger::ApiDoc;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
-use config::traits::Env;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     tracing_subscriber::fmt::init();
 
-    // let pg_settings = config::DbSettings::from_env().expect("Failed to load settings");
-    // let redis_settings = config::RedisSettings::from_env().expect("Failed to load settings");
+    let pg_settings = config::DbSettings::from_env().expect("Failed to load settings");
+    let redis_settings = config::RedisSettings::from_env().expect("Failed to load settings");
 
-    // let db_pool = common::db::create_pool(&pg_settings.postgres_url)
-    //     .await
-    //     .expect("Failed to create database pool");
+    let db_pool = db::create_pool(&pg_settings.postgres_url)
+        .await
+        .expect("Failed to create database pool");
 
-    // let redis_pool =
-    //     common::redis::create_pool(&redis_settings.redis_url).expect("Failed to create Redis pool");
+    let redis_pool =
+        redis::create_pool(&redis_settings.redis_url).expect("Failed to create Redis pool");
 
     let openapi = ApiDoc::openapi();
 
