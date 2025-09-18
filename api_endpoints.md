@@ -167,7 +167,8 @@ Check pre-session and nonce in Redis.
 ### POST
 - `/admin/users/report?...`  
   *(Generate AI report of user interactions, find anomalies)*
-
+- `/admin/users/{id}/role`
+  *(Assigns a role to the user)*
 ### PUT
 - `/admin/users/{id}/revoke`
 - `/admin/users/{id}/devices/{device_id}/revoke`
