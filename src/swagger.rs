@@ -1,5 +1,5 @@
 use utoipa::OpenApi;
-use crate::controllers::utils_controller::{__path_health_check, __path_version};
+use forest_gate::feature::system::{__path_health_check, __path_version};
 
 #[derive(OpenApi)]
     #[openapi(
