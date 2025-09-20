@@ -1,110 +1,50 @@
+use super::ConfigEntity;
 use sqlx::PgPool;
-use chrono::Utc;
-use crate::models::user::{User, CreateUserDto, LoginMethod};
 
-pub struct UserRepository {
-    pool: PgPool,
+#[derive(Clone)]
+pub struct ConfigRepository {
+    pub pool: PgPool,
 }
 
-impl UserRepository {
+impl ConfigRepository {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 
-    pub async fn create(&self, user_dto: CreateUserDto, password_hash: String, salt: Vec<u8>) -> Result<User, sqlx::Error> {
-        let user = sqlx::query_as!(
-            User,
-            r#"
-            INSERT INTO users 
-            (
-                username, 
-                email, 
-                phone_number, 
-                password_hash, 
-                salt, 
-                is_email_verified, 
-                is_phone_verified, 
-                login_method, 
-                created_at, 
-                updated_at
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            RETURNING 
-                id, 
-                username, 
-                email, 
-                phone_number, 
-                password_hash, 
-                salt, 
-                is_email_verified, 
-                is_phone_verified, 
-                login_method as "login_method: LoginMethod", 
-                created_at, 
-                updated_at, 
-                deleted_at
-            "#,
-            user_dto.username,
-            user_dto.email,
-            user_dto.phone_number,
-            password_hash,
-            salt,
-            false, // is_email_verified
-            false, // is_phone_verified
-            user_dto.login_method as LoginMethod,
-            Utc::now(),
-            Utc::now()
-        )
-        .fetch_one(&self.pool)
-        .await?;
-
-        Ok(user)
+    pub async fn get_config(&self) -> sqlx::Result<ConfigEntity> {
+        sqlx::query_as::<_, ConfigEntity>("SELECT * FROM config LIMIT 1")
+            .fetch_one(&self.pool)
+            .await
     }
 
-    pub async fn find_by_id(&self, user_id: i64) -> Result<Option<User>, sqlx::Error> {
-        let user = sqlx::query_as!(
-            User,
+    // allow_recovery_codes: bool,
+    // allow_refresh_tokens: bool,
+    // token_validity_seconds: i32,
+    // refresh_token_validity_seconds: i32,
+    // ai_model: String,
+    // vector_similarity_threshold: i32,
+
+    pub async fn update_config(&self, cfg: &ConfigEntity) -> sqlx::Result<()> {
+        sqlx::query(
             r#"
-            SELECT id, username, email, phone_number, password_hash, salt, is_email_verified, is_phone_verified, login_method as "login_method: LoginMethod", created_at, updated_at, deleted_at
-            FROM users 
-            WHERE id = $1 AND deleted_at IS NULL
+                UPDATE config
+                SET allow_recovery_codes = $1
+                    allow_refresh_tokens = $2
+                    token_validity_seconds = $3
+                    refresh_token_validity_seconds = $4
+                    ai_model = $5
+                    vector_similarity_threshold = $6
             "#,
-            user_id
         )
-        .fetch_optional(&self.pool)
+        .bind(cfg.allow_recovery_codes)
+        .bind(cfg.allow_refresh_tokens)
+        .bind(cfg.token_validity_seconds)
+        .bind(cfg.refresh_token_validity_seconds)
+        .bind(&cfg.ai_model)
+        .bind(cfg.vector_similarity_threshold)
+        .execute(&self.pool)
         .await?;
 
-        Ok(user)
-    }
-
-    pub async fn find_by_email(&self, email: &str) -> Result<Option<User>, sqlx::Error> {
-        let user = sqlx::query_as!(
-            User,
-            r#"
-            SELECT id, username, email, phone_number, password_hash, salt, is_email_verified, is_phone_verified, login_method as "login_method: LoginMethod", created_at, updated_at, deleted_at
-            FROM users 
-            WHERE email = $1 AND deleted_at IS NULL
-            "#,
-            email
-        )
-        .fetch_optional(&self.pool)
-        .await?;
-
-        Ok(user)
-    }
-
-    pub async fn find_by_username(&self, username: &str) -> Result<Option<User>, sqlx::Error> {
-        let user = sqlx::query_as!(
-            User,
-            r#"
-            SELECT id, username, email, phone_number, password_hash, salt, is_email_verified, is_phone_verified, login_method as "login_method: LoginMethod", created_at, updated_at, deleted_at
-            FROM users 
-            WHERE username = $1 AND deleted_at IS NULL
-            "#,
-            username
-        )
-        .fetch_optional(&self.pool)
-        .await?;
-
-        Ok(user)
+        Ok(())
     }
 }

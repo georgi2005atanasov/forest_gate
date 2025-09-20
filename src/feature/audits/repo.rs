@@ -1,110 +1,82 @@
+// use use super::types::{AuditEvent, EventType, LogLevel};
+use super::{AuditEvent, EventType, LogLevel};
 use sqlx::PgPool;
-use chrono::Utc;
-use crate::models::user::{User, CreateUserDto, LoginMethod};
+use uuid::Uuid;
 
-pub struct UserRepository {
-    pool: PgPool,
+#[derive(Clone)]
+pub struct AuditRepository {
+    pub pool: PgPool,
 }
 
-impl UserRepository {
+impl AuditRepository {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 
-    pub async fn create(&self, user_dto: CreateUserDto, password_hash: String, salt: Vec<u8>) -> Result<User, sqlx::Error> {
-        let user = sqlx::query_as!(
-            User,
+    pub async fn create(
+        &self,
+        user_id: i64,
+        event_type: EventType,
+        log_level: LogLevel,
+        session_id: Option<Uuid>,
+    ) -> sqlx::Result<AuditEvent> {
+        let rec = sqlx::query_as::<_, AuditEvent>(
             r#"
-            INSERT INTO users 
-            (
-                username, 
-                email, 
-                phone_number, 
-                password_hash, 
-                salt, 
-                is_email_verified, 
-                is_phone_verified, 
-                login_method, 
-                created_at, 
-                updated_at
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            RETURNING 
-                id, 
-                username, 
-                email, 
-                phone_number, 
-                password_hash, 
-                salt, 
-                is_email_verified, 
-                is_phone_verified, 
-                login_method as "login_method: LoginMethod", 
-                created_at, 
-                updated_at, 
-                deleted_at
+            INSERT INTO audit_events (user_id, event_type, log_level, session_id)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id, user_id, event_type, log_level, session_id, created_at
             "#,
-            user_dto.username,
-            user_dto.email,
-            user_dto.phone_number,
-            password_hash,
-            salt,
-            false, // is_email_verified
-            false, // is_phone_verified
-            user_dto.login_method as LoginMethod,
-            Utc::now(),
-            Utc::now()
         )
+        .bind(user_id)
+        .bind(event_type)
+        .bind(log_level)
+        .bind(session_id)
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(user)
+        Ok(rec)
     }
 
-    pub async fn find_by_id(&self, user_id: i64) -> Result<Option<User>, sqlx::Error> {
-        let user = sqlx::query_as!(
-            User,
+    pub async fn get_by_id(&self, id: Uuid) -> sqlx::Result<AuditEvent> {
+        sqlx::query_as::<_, AuditEvent>(
             r#"
-            SELECT id, username, email, phone_number, password_hash, salt, is_email_verified, is_phone_verified, login_method as "login_method: LoginMethod", created_at, updated_at, deleted_at
-            FROM users 
-            WHERE id = $1 AND deleted_at IS NULL
+            SELECT id, user_id, event_type, log_level, session_id, created_at
+            FROM audit_events
+            WHERE id = $1
             "#,
-            user_id
         )
-        .fetch_optional(&self.pool)
-        .await?;
-
-        Ok(user)
+        .bind(id)
+        .fetch_one(&self.pool)
+        .await
     }
 
-    pub async fn find_by_email(&self, email: &str) -> Result<Option<User>, sqlx::Error> {
-        let user = sqlx::query_as!(
-            User,
+    pub async fn list_recent(&self, limit: i64) -> sqlx::Result<Vec<AuditEvent>> {
+        sqlx::query_as::<_, AuditEvent>(
             r#"
-            SELECT id, username, email, phone_number, password_hash, salt, is_email_verified, is_phone_verified, login_method as "login_method: LoginMethod", created_at, updated_at, deleted_at
-            FROM users 
-            WHERE email = $1 AND deleted_at IS NULL
+            SELECT id, user_id, event_type, log_level, session_id, created_at
+            FROM audit_events
+            ORDER BY created_at DESC
+            LIMIT $1
             "#,
-            email
         )
-        .fetch_optional(&self.pool)
-        .await?;
-
-        Ok(user)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
     }
 
-    pub async fn find_by_username(&self, username: &str) -> Result<Option<User>, sqlx::Error> {
-        let user = sqlx::query_as!(
-            User,
+    pub async fn list_by_user(&self, user_id: i64, limit: i64) -> sqlx::Result<Vec<AuditEvent>> {
+        sqlx::query_as::<_, AuditEvent>(
             r#"
-            SELECT id, username, email, phone_number, password_hash, salt, is_email_verified, is_phone_verified, login_method as "login_method: LoginMethod", created_at, updated_at, deleted_at
-            FROM users 
-            WHERE username = $1 AND deleted_at IS NULL
+            SELECT id, user_id, event_type, log_level, session_id, created_at
+            FROM audit_events
+            WHERE user_id = $1
+            ORDER BY created_at DESC
+            LIMIT $2
             "#,
-            username
         )
-        .fetch_optional(&self.pool)
-        .await?;
-
-        Ok(user)
+        .bind(user_id)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
     }
 }
