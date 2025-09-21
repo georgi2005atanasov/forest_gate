@@ -1,1 +1,48 @@
-/target
+# --- Rust / Cargo ---
+/target/
+**/*.rs.bk
+
+# Keep Cargo.lock for apps (good for reproducible builds)
+# (Do NOT ignore Cargo.lock)
+
+# --- Env & secrets ---
+.env
+.env.*
+!.env.example
+
+# --- Logs & runtime dumps ---
+*.log
+*.tmp
+*.pid
+
+# --- OS junk ---
+.DS_Store
+Thumbs.db
+
+# --- Editors / IDEs ---
+.vscode/
+.idea/
+*.iml
+
+# --- Docker / Compose (optional local overrides) ---
+docker-compose.override.yml
+*.local.yml
+
+# --- Coverage / reports (tarpaulin, etc.) ---
+coverage/
+tarpaulin-report.html
+tarpaulin-*.html
+cobertura.xml
+lcov.info
+
+# --- Node (if you have a small frontend/docs in the repo) ---
+node_modules/
+dist/
+build/
+
+# --- SQLx ---
+# Keep migrations! (they should be committed)
+# migrations/
+# If you use SQLx offline mode, usually commit .sqlx.
+# Uncomment the next line ONLY if you generate it locally and don't want to commit.
+# .sqlx/

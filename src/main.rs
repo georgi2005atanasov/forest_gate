@@ -7,16 +7,19 @@ mod utils;
 use actix_cors::Cors;
 use actix_web::{middleware::Logger, web, App, HttpServer};
 use config::traits::Env;
+use feature::clients::EmailClient;
+use feature::system::ConfigService;
 use infrastructure::persistence::{db, redis};
 use swagger::ApiDoc;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
-use feature::system::ConfigService;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    dotenvy::dotenv().ok();
     tracing_subscriber::fmt::init();
 
+    let email_client = EmailClient::from_env().expect("email client config");
     let pg_settings = config::DbSettings::from_env().expect("Failed to load settings");
     let redis_settings = config::RedisSettings::from_env().expect("Failed to load settings");
 
@@ -31,9 +34,10 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
+            .app_data(web::Data::new(email_client.clone()))
             .app_data(web::Data::new(db_pool.clone()))
             .app_data(web::Data::new(redis_pool.clone()))
-            .app_data(web::Data::new(config_service.clone())) 
+            .app_data(web::Data::new(config_service.clone()))
             .wrap(Logger::default())
             .wrap(Cors::permissive()) // Configure as needed
             .service(
@@ -44,7 +48,7 @@ async fn main() -> std::io::Result<()> {
                     .service(feature::system::health)
                     .service(feature::system::version)
                     .service(feature::system::config)
-                    .service(feature::system::update_config)
+                    .service(feature::system::update_config),
             )
     })
     .bind("127.0.0.1:8080")?

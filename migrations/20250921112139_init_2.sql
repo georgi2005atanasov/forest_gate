@@ -1,18 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- seeding for config
--- INSERT INTO config (
---     id,
---     allow_recovery_codes,
---     allow_refresh_tokens,
---     token_validity_seconds,
---     refresh_token_validity_seconds,
---     ai_model,
---     vector_similarity_threshold
--- ) VALUES (
---     1, true, true, 15000, 100000, 'my-model', 90
--- );
-
 -- CREATE TYPE log_level_enum AS ENUM (
 --     'debug',
 --     'info',
@@ -20,23 +7,22 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 --     'error',
 --     'critical'
 -- );
-
-CREATE TYPE login_method AS ENUM (
-    'with_password', 
-    'with_email', 
-    'with_phone_number'
-);
-CREATE TYPE event_type_enum AS ENUM (
-    'config_change',
-    'login'
-);
-CREATE TYPE log_level_enum AS ENUM (
-    'debug',
-    'info',
-    'warn',
-    'error',
-    'critical'
-);
+-- CREATE TYPE login_method AS ENUM (
+--     'with_password', 
+--     'with_email', 
+--     'with_phone_number'
+-- );
+-- CREATE TYPE event_type_enum AS ENUM (
+--     'config_change',
+--     'login'
+-- );
+-- CREATE TYPE log_level_enum AS ENUM (
+--     'debug',
+--     'info',
+--     'warn',
+--     'error',
+--     'critical'
+-- );
 
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
@@ -52,6 +38,7 @@ CREATE TABLE users (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMPTZ
 );
+
 CREATE TABLE config (
     id SERIAL PRIMARY KEY,
     allow_recovery_codes BOOLEAN NOT NULL,
@@ -61,6 +48,19 @@ CREATE TABLE config (
     ai_model TEXT NOT NULL,
     vector_similarity_threshold INT NOT NULL
 );
+-- seeding for config
+INSERT INTO config (
+    id,
+    allow_recovery_codes,
+    allow_refresh_tokens,
+    token_validity_seconds,
+    refresh_token_validity_seconds,
+    ai_model,
+    vector_similarity_threshold
+) VALUES (
+    1, true, true, 15000, 100000, 'my-model', 90
+);
+
 CREATE TABLE audit_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id BIGINT NOT NULL,

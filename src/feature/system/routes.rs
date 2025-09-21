@@ -1,3 +1,4 @@
+use crate::feature::clients::EmailClient;
 use actix_web::error::ErrorInternalServerError;
 use actix_web::{get, put, web, HttpResponse, Result};
 use chrono::Utc;
@@ -95,12 +96,41 @@ pub async fn config(service: web::Data<ConfigService>) -> Result<HttpResponse> {
 #[put("/config")]
 pub async fn update_config(
     service: web::Data<ConfigService>,
+    email_client: web::Data<EmailClient>,
     payload: web::Json<ConfigDto>,
 ) -> Result<HttpResponse> {
-    let entity = payload.into_inner();
+    let dto = payload.into_inner();
+
     service
-        .update(&entity)
+        .update(&dto)
         .await
         .map_err(ErrorInternalServerError)?;
+
+    if let Ok(recipient) = std::env::var("NOTIFY_EMAIL") {
+        let subject = "Config updated";
+        let text = format!(
+            "Config has been updated.\n\
+             allow_recovery_codes: {}\n\
+             allow_refresh_tokens: {}\n\
+             token_validity_seconds: {}\n\
+             refresh_token_validity_seconds: {}\n\
+             ai_model: {}\n\
+             vector_similarity_threshold: {}",
+            dto.allow_recovery_codes,
+            dto.allow_refresh_tokens,
+            dto.token_validity_seconds,
+            dto.refresh_token_validity_seconds,
+            dto.ai_model,
+            dto.vector_similarity_threshold
+        );
+
+        if let Err(e) = email_client
+            .send_text_and_html(&recipient, subject, Some(&text), None)
+            .await
+        {
+            tracing::error!("Failed to send config update email: {e}");
+        }
+    }
+
     Ok(HttpResponse::Ok().json(json!({"status": "updated"})))
 }
