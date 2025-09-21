@@ -5,7 +5,7 @@ use crate::config::traits::Env;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct DbSettings {
-    pub postgres_url: String
+    pub database_url: String
 }
 
 impl Env for DbSettings {

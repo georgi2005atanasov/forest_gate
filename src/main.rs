@@ -11,6 +11,7 @@ use infrastructure::persistence::{db, redis};
 use swagger::ApiDoc;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
+use feature::system::ConfigService;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -19,19 +20,20 @@ async fn main() -> std::io::Result<()> {
     let pg_settings = config::DbSettings::from_env().expect("Failed to load settings");
     let redis_settings = config::RedisSettings::from_env().expect("Failed to load settings");
 
-    let db_pool = db::create_pool(&pg_settings.postgres_url)
+    let db_pool = db::create_pool(&pg_settings.database_url)
         .await
         .expect("Failed to create database pool");
-
     let redis_pool =
         redis::create_pool(&redis_settings.redis_url).expect("Failed to create Redis pool");
+    let config_service = ConfigService::new(db_pool.clone(), redis_pool.clone());
 
     let openapi = ApiDoc::openapi();
 
     HttpServer::new(move || {
         App::new()
-            // .app_data(web::Data::new(db_pool.clone()))
-            // .app_data(web::Data::new(redis_pool.clone()))
+            .app_data(web::Data::new(db_pool.clone()))
+            .app_data(web::Data::new(redis_pool.clone()))
+            .app_data(web::Data::new(config_service.clone())) 
             .wrap(Logger::default())
             .wrap(Cors::permissive()) // Configure as needed
             .service(
@@ -39,8 +41,10 @@ async fn main() -> std::io::Result<()> {
             )
             .service(
                 web::scope("/api/v1")
-                    .service(feature::system::health_check)
-                    .service(feature::system::version),
+                    .service(feature::system::health)
+                    .service(feature::system::version)
+                    .service(feature::system::config)
+                    .service(feature::system::update_config)
             )
     })
     .bind("127.0.0.1:8080")?

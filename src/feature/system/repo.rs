@@ -17,22 +17,15 @@ impl ConfigRepository {
             .await
     }
 
-    // allow_recovery_codes: bool,
-    // allow_refresh_tokens: bool,
-    // token_validity_seconds: i32,
-    // refresh_token_validity_seconds: i32,
-    // ai_model: String,
-    // vector_similarity_threshold: i32,
-
     pub async fn update_config(&self, cfg: &ConfigEntity) -> sqlx::Result<()> {
         sqlx::query(
             r#"
                 UPDATE config
-                SET allow_recovery_codes = $1
-                    allow_refresh_tokens = $2
-                    token_validity_seconds = $3
-                    refresh_token_validity_seconds = $4
-                    ai_model = $5
+                SET allow_recovery_codes = $1,
+                    allow_refresh_tokens = $2,
+                    token_validity_seconds = $3,
+                    refresh_token_validity_seconds = $4,
+                    ai_model = $5,
                     vector_similarity_threshold = $6
             "#,
         )
