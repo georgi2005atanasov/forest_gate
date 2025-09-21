@@ -1,4 +1,4 @@
-use crate::feature::clients::EmailClient;
+use crate::features::clients::EmailClient;
 use actix_web::error::ErrorInternalServerError;
 use actix_web::{get, put, web, HttpResponse, Result};
 use chrono::Utc;

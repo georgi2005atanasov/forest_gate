@@ -1,4 +1,4 @@
-use forest_gate::feature::system::{
+use forest_gate::features::system::{
     __path_config, __path_health, __path_update_config, __path_version,
 };
 use utoipa::OpenApi;

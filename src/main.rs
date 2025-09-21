@@ -1,5 +1,5 @@
 mod config;
-mod feature;
+mod features;
 mod infrastructure;
 mod swagger;
 mod utils;
@@ -7,8 +7,8 @@ mod utils;
 use actix_cors::Cors;
 use actix_web::{middleware::Logger, web, App, HttpServer};
 use config::traits::Env;
-use feature::clients::EmailClient;
-use feature::system::ConfigService;
+use features::clients::EmailClient;
+use features::system::ConfigService;
 use infrastructure::persistence::{db, redis};
 use swagger::ApiDoc;
 use utoipa::OpenApi;
@@ -45,10 +45,10 @@ async fn main() -> std::io::Result<()> {
             )
             .service(
                 web::scope("/api/v1")
-                    .service(feature::system::health)
-                    .service(feature::system::version)
-                    .service(feature::system::config)
-                    .service(feature::system::update_config),
+                    .service(features::system::health)
+                    .service(features::system::version)
+                    .service(features::system::config)
+                    .service(features::system::update_config),
             )
     })
     .bind("127.0.0.1:8080")?

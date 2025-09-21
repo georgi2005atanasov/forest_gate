@@ -40,9 +40,13 @@ node_modules/
 dist/
 build/
 
+# Ignore MaxMind database files
+/src/features/clients/data/*.mmdb
+
 # --- SQLx ---
 # Keep migrations! (they should be committed)
 # migrations/
 # If you use SQLx offline mode, usually commit .sqlx.
 # Uncomment the next line ONLY if you generate it locally and don't want to commit.
 # .sqlx/
+

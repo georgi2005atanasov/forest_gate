@@ -2,14 +2,14 @@
 
 ---
 
-## Utils
+## System
 
 ### GET
-- `/utils/version`
-- `/utils/health`
+- `/system/version`
+- `/system/health`
 
-### POST
-- `/utils/config`
+### PUT
+- `/system/config`
 
 **Request:**
 ```json
