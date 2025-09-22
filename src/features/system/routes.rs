@@ -11,13 +11,13 @@ use super::ConfigService;
 
 #[utoipa::path(
     get,
-    path = "/api/v1/health",
+    path = "/system/health",
     tag = "SystemController",
     responses(
         (status = 200, description = "Get API health + other metadata")
     )
 )]
-#[get("/health")]
+#[get("/system/health")]
 pub async fn health() -> Result<HttpResponse> {
     let mut sys = System::new_all();
     sys.refresh_all();
@@ -55,13 +55,13 @@ pub async fn health() -> Result<HttpResponse> {
 
 #[utoipa::path(
     get,
-    path = "/api/v1/version",
+    path = "/system/version",
     tag = "SystemController",
     responses(
         (status = 200, description = "Get API version + other metadata")
     )
 )]
-#[get("/version")]
+#[get("/system/version")]
 pub async fn version() -> Result<HttpResponse> {
     Ok(HttpResponse::Ok().json(json!({
         "version": env!("CARGO_PKG_VERSION"),
@@ -71,13 +71,13 @@ pub async fn version() -> Result<HttpResponse> {
 
 #[utoipa::path(
     get,
-    path = "/api/v1/config",
+    path = "/system/config",
     tag = "SystemController",
     responses(
         (status = 200, description = "Get system config", body = ConfigDto)
     )
 )]
-#[get("/config")]
+#[get("/system/config")]
 pub async fn config(service: web::Data<ConfigService>) -> Result<HttpResponse> {
     let cfg = service.get().await.map_err(ErrorInternalServerError)?;
     Ok(HttpResponse::Ok().json(ConfigDto::from(cfg)))
@@ -85,7 +85,7 @@ pub async fn config(service: web::Data<ConfigService>) -> Result<HttpResponse> {
 
 #[utoipa::path(
     put,
-    path = "/api/v1/config",
+    path = "/system/config",
     tag = "SystemController",
     request_body = ConfigDto,
     responses(
@@ -93,7 +93,7 @@ pub async fn config(service: web::Data<ConfigService>) -> Result<HttpResponse> {
         (status = 400, description = "Invalid config input")
     )
 )]
-#[put("/config")]
+#[put("/system/config")]
 pub async fn update_config(
     service: web::Data<ConfigService>,
     email_client: web::Data<EmailClient>,

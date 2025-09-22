@@ -44,7 +44,7 @@ async fn main() -> std::io::Result<()> {
                 SwaggerUi::new("/swagger/{_:.*}").url("/api-docs/openapi.json", openapi.clone()),
             )
             .service(
-                web::scope("/api/v1")
+                web::scope("")
                     .service(features::system::health)
                     .service(features::system::version)
                     .service(features::system::config)
