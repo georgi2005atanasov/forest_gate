@@ -1,20 +1,13 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use sqlx::types::Json;
-use sqlx::FromRow;
+use sqlx::{prelude::Type, FromRow};
 
-use crate::features::onboarding::types::StableFingerprintData;
-
-
-#[derive(Debug, Clone, Copy, sqlx::Type, Serialize, Deserialize)]
-#[sqlx(type_name = "device_type_enum")] // matches your DB enum
-#[serde(rename_all = "snake_case")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Type, Serialize, Deserialize)]
+#[sqlx(type_name = "device_type_enum", rename_all = "lowercase")]
 pub enum DeviceType {
-    Desktop,
     Mobile,
-    Tablet,
-    Bot,
+    Desktop,
     Unknown,
 }
 
@@ -24,13 +17,11 @@ impl Default for DeviceType {
     }
 }
 
-#[derive(Debug, Clone, Copy, sqlx::Type, Serialize, Deserialize)]
-#[sqlx(type_name = "device_status_enum")] // matches your DB enum
-#[serde(rename_all = "snake_case")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Type)]
+#[sqlx(type_name = "device_status_enum", rename_all = "lowercase")]
 pub enum DeviceStatus {
     Active,
-    Blocked,
-    Disabled,
+    Inactive,
 }
 
 impl Default for DeviceStatus {
@@ -52,16 +43,4 @@ pub struct Device {
     pub extra_data: Option<JsonValue>,
     pub created_at: DateTime<Utc>,
     pub deleted_at: Option<DateTime<Utc>>,
-}
-
-/// Data needed to create a device (DTO)
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CreateDeviceDto {
-    pub os_name: Option<String>,
-    pub os_version: Option<String>,
-    pub locale: Option<String>,
-    pub device_type: DeviceType,
-    pub app_version: Option<String>,
-    pub fingerprint: Option<String>,
-    pub extra_data: StableFingerprintData,
 }

@@ -5,6 +5,7 @@ use sqlx::PgPool;
 
 use super::{types::CreateDeviceDto, Device, DeviceStatus};
 
+#[derive(Clone)]
 pub struct DeviceRepository {
     pool: PgPool,
 }

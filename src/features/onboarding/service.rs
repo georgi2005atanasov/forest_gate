@@ -1,15 +1,17 @@
 use actix_web::cookie::{Cookie, SameSite};
 use chrono::Datelike;
-use deadpool_redis::{
-    redis::{self, AsyncCommands},
-    Pool,
-};
+use deadpool_redis::{redis::AsyncCommands, Pool};
 use password_hash::rand_core::{OsRng, RngCore};
+use sqlx::PgPool;
 use time::Duration;
 use uuid::Uuid;
 
 use crate::{
-    features::clients::EmailClient,
+    features::{
+        clients::EmailClient,
+        devices::{types::CreateDeviceDto, Device, DeviceRepository},
+        onboarding::types::PreparationReq,
+    },
     utils::{
         crypto::ClientHMAC,
         error::{Error, Result},
@@ -23,14 +25,32 @@ pub const COOKIE_WITH_EMAIL: &str = "__Host-with_email";
 pub struct OnboardingService {
     pub hmac_client: ClientHMAC,
     pub redis_pool: Pool,
+    pub device_repo: DeviceRepository,
 }
 
 impl OnboardingService {
-    pub fn new(hmac_client: ClientHMAC, redis_pool: Pool) -> Self {
+    pub fn new(hmac_client: ClientHMAC, pool: PgPool, redis_pool: Pool) -> Self {
         Self {
             hmac_client,
             redis_pool,
+            device_repo: DeviceRepository::new(pool),
         }
+    }
+
+    pub async fn ensure_device_from_preparation(&self, req: &PreparationReq) -> Result<Device> {
+        // 1) Try existing by fingerprint
+        if let Some(existing) = self
+            .device_repo
+            .find_by_fingerprint(&req.fingerprint)
+            .await?
+        {
+            return Ok(existing);
+        }
+
+        // 2) Map request -> DTO and create
+        let dto = CreateDeviceDto::from_preparation(req);
+        let created = self.device_repo.create(dto).await?;
+        Ok(created)
     }
 
     pub(super) fn has_visitor_cookie(&self, cookie: Option<Cookie<'static>>) -> Option<String> {

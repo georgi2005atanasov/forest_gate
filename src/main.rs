@@ -17,8 +17,8 @@ use swagger::ApiDoc;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::features::onboarding::utils::RateLimiter;
 use crate::features::onboarding::types::AppState;
+use crate::features::onboarding::utils::RateLimiter;
 use crate::utils::crypto::ClientHMAC;
 use tokio::sync::Mutex;
 
@@ -44,7 +44,8 @@ async fn main() -> std::io::Result<()> {
     // region services
     let hmac_client = make_hmac_from_env();
     let config_service = ConfigService::new(db_pool.clone(), redis_pool.clone());
-    let onboarding_service = OnboardingService::new(hmac_client, redis_pool.clone());
+    let onboarding_service =
+        OnboardingService::new(hmac_client, db_pool.clone(), redis_pool.clone());
     // endregion services
 
     // region rate Limiting

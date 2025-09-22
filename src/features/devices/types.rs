@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use sqlx::types::Json;
 
 use crate::features::{
     devices::DeviceType,
@@ -18,21 +17,18 @@ pub struct CreateDeviceDto {
     pub extra_data: StableFingerprintData,
 }
 
-impl From<PreparationReq> for CreateDeviceDto {
-    fn from(req: PreparationReq) -> Self {
-        // pull from extra_data for OS & locale
+impl CreateDeviceDto {
+    pub fn from_preparation(req: &PreparationReq) -> Self {
         let ua = req.extra_data.user_agent_data.as_ref();
         let os_name = ua.and_then(|u| u.platform.clone());
         let os_version = ua.and_then(|u| u.platform_version.clone());
 
-        // locale preference: primary_language, then first of languages
         let locale = req
             .extra_data
             .primary_language
             .clone()
             .or_else(|| req.extra_data.languages.get(0).cloned());
 
-        // device type from mobile flag (simple heuristic)
         let device_type = match ua.and_then(|u| u.mobile) {
             Some(true) => DeviceType::Mobile,
             Some(false) => DeviceType::Desktop,
@@ -46,7 +42,7 @@ impl From<PreparationReq> for CreateDeviceDto {
             device_type,
             app_version: Some(req.app_version.clone()),
             fingerprint: Some(req.fingerprint.clone()),
-            extra_data: req.extra_data, // stored as JSONB
+            extra_data: req.extra_data.clone(), // keep your JSON mapping consistent
         }
     }
 }

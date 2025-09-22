@@ -9,14 +9,14 @@ pub struct AppState {
 }
 
 // ====== Request structs (camelCase JSON) ======
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Brand {
     pub brand: String,
     pub version: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct UserAgentData {
     pub brands: Option<Vec<Brand>>,
@@ -29,7 +29,7 @@ pub struct UserAgentData {
     pub ua_full_version: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Screen {
     pub width: u32,
@@ -37,7 +37,7 @@ pub struct Screen {
     pub color_depth: u8,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Hardware {
     pub device_memory_gb: Option<u32>,
@@ -45,14 +45,14 @@ pub struct Hardware {
     pub max_touch_points: Option<u32>,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Webgl {
     pub vendor: Option<String>,
     pub renderer: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct StableFingerprintData {
     pub user_agent: String,

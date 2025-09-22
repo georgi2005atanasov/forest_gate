@@ -86,6 +86,11 @@ pub async fn preparation(
         }
     }
 
+    // Ensure device exists (Json<T> derefs to &T, so &payload works)
+    let _device = onboarding_service
+        .ensure_device_from_preparation(&payload)
+        .await?; // your Error implements ResponseError, so `?` converts into actix_web::Error
+
     // 6) Build response
     let mut resp = HttpResponse::Ok();
     if let Some(c) = maybe_cookie {
