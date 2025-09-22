@@ -10,6 +10,7 @@ type HmacSha256 = Hmac<Sha256>;
 /// - `verify()` does constant-time verification.
 /// - `encode_cookie_value()` packs `id.sig`.
 /// - `decode_cookie_value()` returns `Some(id)` only if signature is valid.
+#[derive(Clone)]
 pub struct ClientHMAC {
     key: Vec<u8>,
 }

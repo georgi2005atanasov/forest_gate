@@ -84,3 +84,11 @@ pub(super) struct PreparationResp {
     pub(super) ok: bool,
     pub(super) visitor_id: String,
 }
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct WithEmailReq {
+    pub(super) email: String,
+    // TODO: nonce
+    // pub(super) nonce: String,
+}

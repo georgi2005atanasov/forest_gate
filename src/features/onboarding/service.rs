@@ -1,88 +1,161 @@
-use std::net::IpAddr;
-
-use actix_web::{
-    cookie::{Cookie, SameSite},
-    HttpRequest,
+use actix_web::cookie::{Cookie, SameSite};
+use chrono::Datelike;
+use deadpool_redis::{
+    redis::{self, AsyncCommands},
+    Pool,
 };
+use password_hash::rand_core::{OsRng, RngCore};
 use time::Duration;
 use uuid::Uuid;
 
-use crate::utils::crypto::ClientHMAC;
- 
-const COOKIE_NAME: &str = "__Host-visitor_id";
+use crate::{
+    features::clients::EmailClient,
+    utils::{
+        crypto::ClientHMAC,
+        error::{Error, Result},
+    },
+};
 
-pub(super) fn read_or_set_visitor_cookie(
-    req: &HttpRequest,
-    hmac_client: &ClientHMAC,
-) -> (String, Option<Cookie<'static>>) {
-    if let Some(c) = req.cookie(COOKIE_NAME) {
-        if let Some(id) = hmac_client.decode_cookie_value(c.value()) {
-            return (id, None);
+pub const COOKIE_VISITOR: &str = "__Host-visitor_id";
+pub const COOKIE_WITH_EMAIL: &str = "__Host-with_email";
+
+#[derive(Clone)]
+pub struct OnboardingService {
+    pub hmac_client: ClientHMAC,
+    pub redis_pool: Pool,
+}
+
+impl OnboardingService {
+    pub fn new(hmac_client: ClientHMAC, redis_pool: Pool) -> Self {
+        Self {
+            hmac_client,
+            redis_pool,
         }
-        // invalid or tampered; fall through and re-issue
     }
 
-    let new_id = Uuid::new_v4().to_string();
-    let value = hmac_client.encode_cookie_value(&new_id);
-
-    let cookie = Cookie::build(COOKIE_NAME, value)
-        .http_only(true)
-        .secure(true)
-        .same_site(SameSite::Lax)
-        .max_age(Duration::days(180))
-        .path("/") // required for __Host- prefix (and do not set Domain)
-        .finish();
-
-    (new_id, Some(cookie))
-}
-
-pub(super) fn parse_ip(s: &str) -> Option<IpAddr> {
-    s.trim().parse::<IpAddr>().ok()
-}
-pub(super) fn get_client_ip(req: &HttpRequest) -> Option<IpAddr> {
-    // Prefer Forwarded: for=...
-    if let Some(h) = req.headers().get("forwarded") {
-        if let Ok(v) = h.to_str() {
-            for part in v.split(';').flat_map(|x| x.split(',')) {
-                let p = part.trim();
-                if let Some(val) = p.strip_prefix("for=") {
-                    let val = val.trim_matches('"');
-                    if let Some(ip) = parse_ip(val) {
-                        return Some(ip);
-                    }
-                }
+    pub(super) fn has_visitor_cookie(&self, cookie: Option<Cookie<'static>>) -> Option<String> {
+        if let Some(c) = cookie {
+            if let Some(id) = self.hmac_client.decode_cookie_value(c.value()) {
+                return Some(id);
             }
         }
+
+        // the cookie was not set
+        None
     }
-    if let Some(h) = req.headers().get("x-forwarded-for") {
-        if let Ok(v) = h.to_str() {
-            if let Some(first) = v.split(',').next() {
-                if let Some(ip) = parse_ip(first) {
-                    return Some(ip);
-                }
+
+    pub(super) async fn check_visitor_cookie_existence(&self, key: &str) -> Result<bool> {
+        let mut conn = self.redis_pool.get().await.map_err(Error::from)?;
+
+        // `EXISTS` returns i32 (0 = does not exist, 1 = exists)
+        let exists: i32 = conn.exists(key).await.map_err(Error::from)?;
+        Ok(exists > 0)
+    }
+
+    pub(super) fn read_or_set_visitor_cookie(
+        &self,
+        cookie: Option<Cookie<'static>>,
+    ) -> (String, Option<Cookie<'static>>) {
+        if let Some(c) = cookie {
+            if let Some(id) = self.hmac_client.decode_cookie_value(c.value()) {
+                return (id, None);
             }
+            // invalid or tampered; fall through and re-issue
         }
-    }
-    req.peer_addr().map(|p| p.ip())
-}
 
-/// Reduce IP to a coarse bucket (/24 for v4, /64 for v6)
-pub(super) fn ip_to_bucket(ip: &IpAddr) -> String {
-    match ip {
-        IpAddr::V4(v4) => {
-            let o = v4.octets();
-            format!("{}.{}.{}.0/24", o[0], o[1], o[2])
-        }
-        IpAddr::V6(v6) => {
-            let s = v6.segments();
-            format!("{:x}:{:x}:{:x}:{:x}::/64", s[0], s[1], s[2], s[3])
-        }
-    }
-}
+        let new_id = Uuid::new_v4().to_string();
+        let value = self.hmac_client.encode_cookie_value(&new_id);
 
-pub(super) fn sha256_hex(input: &str) -> String {
-    use sha2::{Digest, Sha256};
-    let mut h = Sha256::new();
-    h.update(input.as_bytes());
-    hex::encode(h.finalize())
+        let cookie = Cookie::build(COOKIE_VISITOR, value)
+            .http_only(true)
+            .secure(true)
+            .same_site(SameSite::Lax)
+            .max_age(Duration::days(180))
+            .path("/") // required for __Host- prefix (and do not set Domain)
+            .finish();
+
+        (new_id, Some(cookie))
+    }
+
+    pub(super) async fn send_otp(
+        &self,
+        user_email: &str,
+        email_client: &EmailClient,
+    ) -> Result<Cookie<'static>> {
+        // 1) Generate nonce (32 bytes -> hex)
+        let nonce = {
+            let mut bytes = [0u8; 32];
+            OsRng.fill_bytes(&mut bytes);
+            hex::encode(bytes)
+        };
+
+        // 2) Generate 6-digit OTP (000000..999999), zero-padded
+        let otp_num = (OsRng.next_u32() % 1_000_000) as u32;
+        let otp_code = format!("{:06}", otp_num);
+
+        // 3) Store OTP in Redis with TTL (e.g., 10 minutes)
+        //    Key is bound to the nonce so only the user with the cookie can verify.
+        let mut conn = self.redis_pool.get().await.map_err(Error::from)?;
+        let redis_key = format!("otp:with_email:v1:{}", nonce);
+        let ttl_seconds = 10 * 60; // 10 minutes
+                                   // SET key value EX <ttl> NX  (only set if not exists)
+        let _: () = deadpool_redis::redis::cmd("SET")
+            .arg(&redis_key)
+            .arg(&otp_code)
+            .arg("EX")
+            .arg(ttl_seconds)
+            .arg("NX")
+            .query_async(&mut conn)
+            .await
+            .map_err(Error::from)?;
+
+        // 4) Build email (subject + text + html), include the OTP
+        let subject = "Email Verification";
+
+        let text_body = format!(
+    "Your verification code is: {otp}\n\nThis code will expire in 10 minutes.\nIf you did not request this, you can ignore this email.",
+    otp = otp_code
+);
+
+        let html_body = format!(
+            r#"
+<!doctype html>
+<html>
+  <body style="background:#f6f8fb;margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">
+    <!-- ... -->
+    <div style="text-align:center;margin:20px 0;">
+      <div style="display:inline-block;letter-spacing:6px;font-weight:700;font-size:28px;color:#111827;background:#f3f4f6;border-radius:12px;padding:12px 18px;">
+        {otp}
+      </div>
+    </div>
+    <!-- ... -->
+    © {year} Forest Gate
+  </body>
+</html>
+"#,
+            otp = otp_code,
+            year = chrono::Utc::now().year()
+        );
+
+        email_client
+            .send_text_and_html(
+                user_email,
+                subject,
+                Some(text_body.as_str()),
+                Some(html_body.as_str()),
+            )
+            .await?;
+
+        // 6) Sign nonce and create cookie (__Host-with_email)
+        let value = self.hmac_client.encode_cookie_value(&nonce);
+        let cookie = Cookie::build(COOKIE_WITH_EMAIL, value)
+            .http_only(true)
+            .secure(true)
+            .same_site(SameSite::Lax)
+            .max_age(Duration::minutes(10)) // same as OTP TTL
+            .path("/") // required for __Host-*
+            .finish();
+
+        Ok(cookie)
+    }
 }
