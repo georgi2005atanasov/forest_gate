@@ -74,8 +74,8 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
             .wrap(
                 Cors::default()
-                    .allow_any_origin()
-                    .allowed_methods(vec!["GET", "POST", "OPTIONS"])
+                    .allowed_origin("http://localhost:5173")
+                    .allowed_methods(vec!["GET", "POST", "PUT", "OPTIONS"])
                     .allow_any_header()
                     .supports_credentials(),
             ) // should be changed for production!!!
