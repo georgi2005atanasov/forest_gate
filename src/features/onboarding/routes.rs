@@ -27,7 +27,6 @@ async fn preparation(
     hmac_client: web::Data<ClientHMAC>,
 ) -> actix_web::Result<impl Responder> {
     // 1) visitor cookie
-
     let (visitor_id, maybe_cookie) = read_or_set_visitor_cookie(&req, &hmac_client);
 
     // 2) pick IP (header or peer) — if payload.ip is present, you can prefer server-detected IP instead
@@ -88,21 +87,6 @@ async fn preparation(
     if let Some(c) = maybe_cookie {
         resp.cookie(c);
     }
-
-    // fn removal_cookie(name: &str) -> Cookie<'static> {
-    //     Cookie::build(name, "")
-    //         .path("/") // same path as original
-    //         .http_only(true)
-    //         .secure(true)
-    //         .same_site(SameSite::Lax)
-    //         .expires(time::OffsetDateTime::now_utc() - time::Duration::days(1)) // expire in past
-    //         .finish()
-    //         .into_owned() // <-- make it 'static
-    // }
-
-    // if req.cookie("visitor_id").is_some() {
-    //     resp.cookie(removal_cookie("visitor_id"));
-    // }
 
     Ok(resp.json(PreparationResp {
         ok: true,
