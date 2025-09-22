@@ -1,9 +1,4 @@
-use std::time::Duration;
-
-use actix_web::{
-    cookie::{Cookie, SameSite},
-    post, web, HttpRequest, HttpResponse, Responder,
-};
+use actix_web::{post, web, HttpRequest, HttpResponse, Responder};
 
 use super::{get_client_ip, ip_to_bucket, parse_ip, read_or_set_visitor_cookie, sha256_hex};
 use crate::{
@@ -16,7 +11,8 @@ use crate::{
     path = "/onboarding/preparation",
     tag = "onboarding",
     responses(
-        (status = 200, description = "Prepare user for authentication")
+        (status = 200, description = "Prepare user for authentication"),
+        (status = 429, description = "Too many requests"),
     )
 )]
 #[post("/onboarding/preparation")]
@@ -93,3 +89,16 @@ async fn preparation(
         visitor_id,
     }))
 }
+
+#[utoipa::path(
+    post,
+    path="/onboarding/with-email",
+    tag="onboarding",
+    responses=(
+        (status = 200, description = "Prepare user for authentication"),
+        (status = 403, description = "Forbidden"),
+        (status = 429, description = "Too many requests"),
+    )
+)]
+#[post("/onboarding/with-email")]
+pub async fn with_email() {}

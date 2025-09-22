@@ -1,7 +1,7 @@
 mod routes;
+mod service;
 pub mod repo;
-pub mod service;
 pub mod types;
 
 pub use routes::*;
-pub(super) use service::*;
+pub(self) use service::*;

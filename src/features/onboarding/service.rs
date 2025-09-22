@@ -8,7 +8,7 @@ use time::Duration;
 use uuid::Uuid;
 
 use crate::utils::crypto::ClientHMAC;
-
+ 
 const COOKIE_NAME: &str = "__Host-visitor_id";
 
 pub(super) fn read_or_set_visitor_cookie(
@@ -36,7 +36,6 @@ pub(super) fn read_or_set_visitor_cookie(
     (new_id, Some(cookie))
 }
 
-// ====== IP helpers ======
 pub(super) fn parse_ip(s: &str) -> Option<IpAddr> {
     s.trim().parse::<IpAddr>().ok()
 }
