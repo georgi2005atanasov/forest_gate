@@ -15,8 +15,12 @@ validator = { version = "0.18", features = ["derive"] }
 # Sessions & Redis
 actix-session = "0.10.1"
 actix-redis = "0.13.0"
-deadpool-redis = "0.18.0"
-# alternatively: redis = "0.27.0"
+deadpool-redis = { version = "0.18", features = ["rt_tokio_1"] }
+time = "0.3"
+sha2 = "0.10"
+base64 = "0.22"
+hmac = "0.12"
+hex = "0.4"
 
 # Database & vectors
 sqlx = { version = "0.7", features = [
