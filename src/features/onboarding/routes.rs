@@ -6,7 +6,7 @@ use crate::features::{
     clients::EmailClient,
     onboarding::{
         get_client_ip, ip_to_bucket, parse_ip, sha256_hex,
-        types::{AppState, PreparationReq, PreparationResp, WithEmailReq},
+        types::{AppState, PreparationReq, PreparationResp, WithEmailReq, WithEmailResp},
         OnboardingService, COOKIE_VISITOR,
     },
 };
@@ -30,6 +30,8 @@ pub async fn preparation(
     // 1) visitor cookie
     let (visitor_id, maybe_cookie) =
         onboarding_service.read_or_set_visitor_cookie(req.cookie(COOKIE_VISITOR));
+
+    print!("{:?}", payload.extra_data);
 
     // 2) pick IP (header or peer) — if payload.ip is present, you can prefer server-detected IP instead
     let ip = get_client_ip(&req).or_else(|| payload.ip.as_ref().and_then(|s| parse_ip(s)));
@@ -140,7 +142,7 @@ pub async fn with_email(
     let cookie = onboarding_service.send_otp(email, &email_client).await?;
     let mut resp = HttpResponse::Ok();
     resp.cookie(cookie);
-    Ok(resp.finish())
+    Ok(resp.json(WithEmailResp { ok: true }))
 }
 
 #[utoipa::path(

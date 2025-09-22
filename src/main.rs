@@ -17,7 +17,7 @@ use swagger::ApiDoc;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::features::onboarding::repo::RateLimiter;
+use crate::features::onboarding::utils::RateLimiter;
 use crate::features::onboarding::types::AppState;
 use crate::utils::crypto::ClientHMAC;
 use tokio::sync::Mutex;

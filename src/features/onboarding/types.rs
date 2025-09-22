@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use utoipa::ToSchema;
 
-use crate::features::onboarding::repo::RateLimiter;
+use crate::features::onboarding::RateLimiter;
 
 pub struct AppState {
     pub limiter: Mutex<RateLimiter>,
@@ -11,71 +11,71 @@ pub struct AppState {
 // ====== Request structs (camelCase JSON) ======
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct Brand {
-    pub(super) brand: String,
-    pub(super) version: String,
+pub struct Brand {
+    pub brand: String,
+    pub version: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct UserAgentData {
-    pub(super) brands: Option<Vec<Brand>>,
-    pub(super) mobile: Option<bool>,
-    pub(super) platform: Option<String>,
-    pub(super) architecture: Option<String>,
-    pub(super) bitness: Option<String>,
-    pub(super) model: Option<String>,
-    pub(super) platform_version: Option<String>,
-    pub(super) ua_full_version: Option<String>,
+pub struct UserAgentData {
+    pub brands: Option<Vec<Brand>>,
+    pub mobile: Option<bool>,
+    pub platform: Option<String>,
+    pub architecture: Option<String>,
+    pub bitness: Option<String>,
+    pub model: Option<String>,
+    pub platform_version: Option<String>,
+    pub ua_full_version: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct Screen {
-    pub(super) width: u32,
-    pub(super) height: u32,
-    pub(super) color_depth: u8,
+pub struct Screen {
+    pub width: u32,
+    pub height: u32,
+    pub color_depth: u8,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct Hardware {
-    pub(super) device_memory_gb: Option<u32>,
-    pub(super) hardware_concurrency: Option<u32>,
-    pub(super) max_touch_points: Option<u32>,
+pub struct Hardware {
+    pub device_memory_gb: Option<u32>,
+    pub hardware_concurrency: Option<u32>,
+    pub max_touch_points: Option<u32>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct Webgl {
-    pub(super) vendor: Option<String>,
-    pub(super) renderer: Option<String>,
+pub struct Webgl {
+    pub vendor: Option<String>,
+    pub renderer: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct StableFingerprintData {
-    pub(super) user_agent: String,
-    pub(super) user_agent_data: Option<UserAgentData>,
-    pub(super) primary_language: Option<String>,
-    pub(super) languages: Vec<String>,
-    pub(super) time_zone: Option<String>,
-    pub(super) time_zone_offset_minutes: i32,
-    pub(super) screen: Screen,
-    pub(super) hardware: Hardware,
-    pub(super) webgl: Option<Webgl>,
-    pub(super) canvas_hash: Option<String>,
-    pub(super) install_id: String,
+pub struct StableFingerprintData {
+    pub user_agent: String,
+    pub user_agent_data: Option<UserAgentData>,
+    pub primary_language: Option<String>,
+    pub languages: Vec<String>,
+    pub time_zone: Option<String>,
+    pub time_zone_offset_minutes: i32,
+    pub screen: Screen,
+    pub hardware: Hardware,
+    pub webgl: Option<Webgl>,
+    pub canvas_hash: Option<String>,
+    pub install_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct PreparationReq {
-    pub(super) app_version: String,
-    pub(super) fingerprint: String,
-    pub(super) extra_data: StableFingerprintData,
+pub struct PreparationReq {
+    pub app_version: String,
+    pub fingerprint: String,
+    pub extra_data: StableFingerprintData,
     // if you also want to accept ip in body (optional)
-    pub(super) ip: Option<String>,
+    pub ip: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -91,4 +91,10 @@ pub(super) struct WithEmailReq {
     pub(super) email: String,
     // TODO: nonce
     // pub(super) nonce: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct WithEmailResp {
+    pub(super) ok: bool,
 }

@@ -1,110 +1,104 @@
-use sqlx::PgPool;
+use crate::features::onboarding::types::StableFingerprintData;
 use chrono::Utc;
-use crate::models::user::{User, CreateUserDto, LoginMethod};
+use sqlx::types::Json;
+use sqlx::PgPool;
 
-pub struct UserRepository {
+use super::{types::CreateDeviceDto, Device, DeviceStatus};
+
+pub struct DeviceRepository {
     pool: PgPool,
 }
 
-impl UserRepository {
+impl DeviceRepository {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 
-    pub async fn create(&self, user_dto: CreateUserDto, password_hash: String, salt: Vec<u8>) -> Result<User, sqlx::Error> {
-        let user = sqlx::query_as!(
-            User,
-            r#"
-            INSERT INTO users 
-            (
-                username, 
-                email, 
-                phone_number, 
-                password_hash, 
-                salt, 
-                is_email_verified, 
-                is_phone_verified, 
-                login_method, 
-                created_at, 
-                updated_at
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            RETURNING 
-                id, 
-                username, 
-                email, 
-                phone_number, 
-                password_hash, 
-                salt, 
-                is_email_verified, 
-                is_phone_verified, 
-                login_method as "login_method: LoginMethod", 
-                created_at, 
-                updated_at, 
-                deleted_at
-            "#,
-            user_dto.username,
-            user_dto.email,
-            user_dto.phone_number,
-            password_hash,
-            salt,
-            false, // is_email_verified
-            false, // is_phone_verified
-            user_dto.login_method as LoginMethod,
-            Utc::now(),
-            Utc::now()
-        )
-        .fetch_one(&self.pool)
-        .await?;
+    pub async fn create(&self, dto: CreateDeviceDto) -> Result<Device, sqlx::Error> {
+        let extra: serde_json::Value = serde_json::to_value(&dto.extra_data)
+            .map_err(|e| sqlx::Error::Protocol(e.to_string()))?;
 
-        Ok(user)
+        // then use `extra` in the INSERT
+        let device = sqlx::query_as!(
+    Device,
+    r#"
+    INSERT INTO devices
+      (os_name, os_version, locale, device_type, device_status, app_version, fingerprint, extra_data, created_at)
+    VALUES
+      ($1,     $2,        $3,     $4,          $5,            $6,         $7,         $8,         $9)
+    RETURNING
+      id, os_name, os_version, locale,
+      device_type as "device_type: _",
+      device_status as "device_status: _",
+      app_version, fingerprint,
+      extra_data,                                  -- field type Option<JsonValue>
+      created_at, deleted_at
+    "#,
+    dto.os_name,
+    dto.os_version,
+    dto.locale,
+    dto.device_type as _,
+    DeviceStatus::Active as _,
+    dto.app_version,
+    dto.fingerprint,
+    extra,                                         // <- use the precomputed JSON value
+    chrono::Utc::now()
+)
+.fetch_one(&self.pool)
+.await?;
+
+        Ok(device)
     }
 
-    pub async fn find_by_id(&self, user_id: i64) -> Result<Option<User>, sqlx::Error> {
-        let user = sqlx::query_as!(
-            User,
+    pub async fn find_by_id(&self, id: i64) -> Result<Option<Device>, sqlx::Error> {
+        let device = sqlx::query_as!(
+            Device,
             r#"
-            SELECT id, username, email, phone_number, password_hash, salt, is_email_verified, is_phone_verified, login_method as "login_method: LoginMethod", created_at, updated_at, deleted_at
-            FROM users 
-            WHERE id = $1 AND deleted_at IS NULL
-            "#,
-            user_id
+        SELECT
+          id,
+          os_name,
+          os_version,
+          locale,
+          device_type as "device_type: _",
+          device_status as "device_status: _",
+          app_version,
+          fingerprint,
+          extra_data,           -- <== no cast
+          created_at,
+          deleted_at
+        FROM devices
+        WHERE id = $1 AND deleted_at IS NULL
+        "#,
+            id
         )
         .fetch_optional(&self.pool)
         .await?;
-
-        Ok(user)
+        Ok(device)
     }
 
-    pub async fn find_by_email(&self, email: &str) -> Result<Option<User>, sqlx::Error> {
-        let user = sqlx::query_as!(
-            User,
+    pub async fn find_by_fingerprint(&self, fp: &str) -> Result<Option<Device>, sqlx::Error> {
+        let device = sqlx::query_as!(
+            Device,
             r#"
-            SELECT id, username, email, phone_number, password_hash, salt, is_email_verified, is_phone_verified, login_method as "login_method: LoginMethod", created_at, updated_at, deleted_at
-            FROM users 
-            WHERE email = $1 AND deleted_at IS NULL
-            "#,
-            email
+        SELECT
+          id,
+          os_name,
+          os_version,
+          locale,
+          device_type as "device_type: _",
+          device_status as "device_status: _",
+          app_version,
+          fingerprint,
+          extra_data,           -- <== no cast
+          created_at,
+          deleted_at
+        FROM devices
+        WHERE fingerprint = $1 AND deleted_at IS NULL
+        "#,
+            fp
         )
         .fetch_optional(&self.pool)
         .await?;
-
-        Ok(user)
-    }
-
-    pub async fn find_by_username(&self, username: &str) -> Result<Option<User>, sqlx::Error> {
-        let user = sqlx::query_as!(
-            User,
-            r#"
-            SELECT id, username, email, phone_number, password_hash, salt, is_email_verified, is_phone_verified, login_method as "login_method: LoginMethod", created_at, updated_at, deleted_at
-            FROM users 
-            WHERE username = $1 AND deleted_at IS NULL
-            "#,
-            username
-        )
-        .fetch_optional(&self.pool)
-        .await?;
-
-        Ok(user)
+        Ok(device)
     }
 }
