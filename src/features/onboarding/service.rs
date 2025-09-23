@@ -18,8 +18,20 @@ use crate::{
     },
 };
 
+/// region Cookies
 pub const COOKIE_VISITOR: &str = "__Host-visitor_id";
 pub const COOKIE_WITH_EMAIL: &str = "__Host-with_email";
+pub const COOKIE_EMAIL_VERIFIED: &str = "__Host-email_verified";
+pub const COOKIE_DEVICE_ID: &str = "__Host-device_id";
+/// endregion Cookies
+
+/// region Redis prefixes
+pub const VISITOR_PREFIX: &str = "rl:prep:v1:visitor:";
+pub const INSTALL_PREFIX: &str = "rl:prep:v1:install:";
+pub const IP_PREFIX: &str = "rl:prep:v1:ip:";
+pub const EMAIL_PREFIX: &str = "rl:email:";
+pub const OTP_PREFIX: &str = "otp:with_email:v1:";
+/// endregion Redis prefixes
 
 #[derive(Clone)]
 pub struct OnboardingService {
@@ -37,20 +49,42 @@ impl OnboardingService {
         }
     }
 
-    pub async fn ensure_device_from_preparation(&self, req: &PreparationReq) -> Result<Device> {
+    /// returning the device + cookie containing the id of the device
+    pub async fn ensure_device_from_preparation(
+        &self,
+        req: &PreparationReq,
+    ) -> Result<(Device, Cookie<'_>)> {
         // 1) Try existing by fingerprint
         if let Some(existing) = self
             .device_repo
             .find_by_fingerprint(&req.fingerprint)
             .await?
         {
-            return Ok(existing);
+            // repeated code
+            let cookie = Cookie::build(COOKIE_DEVICE_ID, existing.id.to_string())
+                .http_only(true)
+                .secure(true)
+                .same_site(SameSite::Lax)
+                .max_age(Duration::days(180))
+                .path("/") // required for __Host- prefix (and do not set Domain)
+                .finish();
+            return Ok((existing, cookie));
         }
 
         // 2) Map request -> DTO and create
         let dto = CreateDeviceDto::from_preparation(req);
         let created = self.device_repo.create(dto).await?;
-        Ok(created)
+
+        // repeated code
+        let cookie = Cookie::build(COOKIE_DEVICE_ID, created.id.to_string())
+            .http_only(true)
+            .secure(true)
+            .same_site(SameSite::Lax)
+            .max_age(Duration::days(180))
+            .path("/") // required for __Host- prefix (and do not set Domain)
+            .finish();
+
+        Ok((created, cookie))
     }
 
     pub(super) fn has_visitor_cookie(&self, cookie: Option<Cookie<'static>>) -> Option<String> {
@@ -59,8 +93,6 @@ impl OnboardingService {
                 return Some(id);
             }
         }
-
-        // the cookie was not set
         None
     }
 
@@ -97,6 +129,48 @@ impl OnboardingService {
         (new_id, Some(cookie))
     }
 
+    /// If something is wrong, an exception is thrown
+    /// If verification is passed:
+    /// - a user is created
+    /// - a record is added to user_devices
+    pub(super) async fn verify_email(
+        &self,
+        email: &str,
+        code: &str,
+        cookie: Option<Cookie<'static>>,
+    ) -> Result<Cookie<'_>> {
+        if let Some(c) = cookie {
+            if let Some(nonce) = self.hmac_client.decode_cookie_value(c.value()) {
+                let mut conn = self.redis_pool.get().await.map_err(Error::from)?;
+                let otp: Option<String> = deadpool_redis::redis::cmd("GET")
+                    .arg(format!("{}{}", OTP_PREFIX, nonce))
+                    .query_async(&mut conn)
+                    .await
+                    .map_err(Error::from)?;
+
+                if let Some(otp) = otp {
+                    if otp == code {
+                        // the cookie is gonna store: email
+                        let value = self.hmac_client.encode_cookie_value(&email);
+                        let cookie = Cookie::build(COOKIE_EMAIL_VERIFIED, value)
+                            .http_only(true)
+                            .secure(true)
+                            .same_site(SameSite::Lax)
+                            .max_age(Duration::days(180))
+                            .path("/") // required for __Host-prefix (and do not set Domain)
+                            .finish();
+
+                        return Ok(cookie);
+                    }
+                }
+            }
+        }
+
+        return Err(Error::InvalidOtp("invalid or expired session".to_string()));
+    }
+
+    /// sends an email and generates a cookie with nonce in it -
+    /// the nonce would be used to get the cookie value from Redis
     pub(super) async fn send_otp(
         &self,
         user_email: &str,
@@ -116,7 +190,7 @@ impl OnboardingService {
         // 3) Store OTP in Redis with TTL (e.g., 10 minutes)
         //    Key is bound to the nonce so only the user with the cookie can verify.
         let mut conn = self.redis_pool.get().await.map_err(Error::from)?;
-        let redis_key = format!("otp:with_email:v1:{}", nonce);
+        let redis_key = format!("{}{}", OTP_PREFIX, nonce);
         let ttl_seconds = 10 * 60; // 10 minutes
                                    // SET key value EX <ttl> NX  (only set if not exists)
         let _: () = deadpool_redis::redis::cmd("SET")

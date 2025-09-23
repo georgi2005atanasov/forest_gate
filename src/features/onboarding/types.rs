@@ -89,12 +89,24 @@ pub(super) struct PreparationResp {
 #[serde(rename_all = "camelCase")]
 pub(super) struct WithEmailReq {
     pub(super) email: String,
-    // TODO: nonce
-    // pub(super) nonce: String,
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct WithEmailResp {
     pub(super) ok: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub(super) struct EmailVerificationReq {
+    // can be further more checked, but for speed purposes we leave it :)
+    pub(super) email: String,
+    pub(super) code: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub(super) struct UserDetailsReq {
+    pub(super) email: String,
+    pub(super) password: String,
+    pub(super) confirm_password: String,
 }

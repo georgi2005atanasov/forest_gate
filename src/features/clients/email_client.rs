@@ -57,7 +57,7 @@ impl EmailClient {
             content,
         };
 
-        let res = self.http
+        let resp = self.http
             .post(url)
             .bearer_auth(&self.api_key)
             .json(&body)
@@ -65,12 +65,12 @@ impl EmailClient {
             .await?; // uses From<reqwest::Error> for your Error
 
         // SendGrid success = 202 Accepted
-        if res.status() == reqwest::StatusCode::ACCEPTED {
+        if resp.status() == reqwest::StatusCode::ACCEPTED {
             tracing::info!("email sent!");
             Ok(())
         } else {
-            let code = res.status().as_u16();
-            let text = res.text().await.unwrap_or_default();
+            let code = resp.status().as_u16();
+            let text = resp.text().await.unwrap_or_default();
             Err(Error::Unexpected(format!("sendgrid failed: status={code} body={text}")))
         }
     }

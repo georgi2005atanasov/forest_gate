@@ -14,6 +14,7 @@ pub enum Error {
     Forbidden,
     Db(sqlx::Error),
     Unexpected(String),
+    InvalidOtp(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -28,6 +29,7 @@ impl fmt::Display for Error {
             Error::Forbidden => write!(f, "forbidden"),
             Error::Db(e) => write!(f, "database error: {e}"),
             Error::Unexpected(msg) => write!(f, "unexpected error: {msg}"),
+            Error::InvalidOtp(msg) => write!(f, "invalid otp: {}", msg),
         }
     }
 }
@@ -81,6 +83,7 @@ impl ResponseError for Error {
             Error::Conflict(_) => StatusCode::CONFLICT,
             Error::Unauthorized => StatusCode::UNAUTHORIZED,
             Error::Forbidden => StatusCode::FORBIDDEN,
+            Error::InvalidOtp(_) => StatusCode::CONFLICT,
             Error::Db(_) | Error::Unexpected(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -94,6 +97,7 @@ impl ResponseError for Error {
             Error::Forbidden => ("FORBIDDEN", self.to_string()),
             Error::Db(_) => ("DB_ERROR", self.to_string()),
             Error::Unexpected(_) => ("UNEXPECTED", self.to_string()),
+            Error::InvalidOtp(_) => ("INVALID_OTP", self.to_string()),
         };
 
         let body = ErrorBody { code, message };

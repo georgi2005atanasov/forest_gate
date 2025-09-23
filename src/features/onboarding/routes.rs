@@ -6,8 +6,12 @@ use crate::features::{
     clients::EmailClient,
     onboarding::{
         get_client_ip, ip_to_bucket, parse_ip, sha256_hex,
-        types::{AppState, PreparationReq, PreparationResp, WithEmailReq, WithEmailResp},
-        OnboardingService, COOKIE_VISITOR,
+        types::{
+            AppState, EmailVerificationReq, PreparationReq, PreparationResp, UserDetailsReq,
+            WithEmailReq, WithEmailResp,
+        },
+        OnboardingService, COOKIE_VISITOR, COOKIE_WITH_EMAIL, EMAIL_PREFIX, INSTALL_PREFIX,
+        IP_PREFIX, VISITOR_PREFIX,
     },
 };
 
@@ -40,11 +44,11 @@ pub async fn preparation(
     // 3) install id from payload
     let install_id = &payload.extra_data.install_id;
 
-    let k_visitor = format!("rl:prep:v1:visitor:{}", sha256_hex(&visitor_id));
-    let k_install = format!("rl:prep:v1:install:{}", sha256_hex(install_id));
+    let k_visitor = format!("{}{}", VISITOR_PREFIX, sha256_hex(&visitor_id));
+    let k_install = format!("{}{}", INSTALL_PREFIX, sha256_hex(install_id));
     let k_ip = ip_bucket
         .as_ref()
-        .map(|b| format!("rl:prep:v1:ip:{}", sha256_hex(b)));
+        .map(|b| format!("{}{}", IP_PREFIX, sha256_hex(b)));
 
     // 5) Apply rate limits (simple sequential calls)
     // tune as you like
@@ -86,16 +90,17 @@ pub async fn preparation(
         }
     }
 
-    // Ensure device exists (Json<T> derefs to &T, so &payload works)
-    let _device = onboarding_service
+    // Ensure device exists or create one
+    let (_device, device_cookie) = onboarding_service
         .ensure_device_from_preparation(&payload)
-        .await?; // your Error implements ResponseError, so `?` converts into actix_web::Error
+        .await?;
 
     // 6) Build response
     let mut resp = HttpResponse::Ok();
     if let Some(c) = maybe_cookie {
         resp.cookie(c);
     }
+    resp.cookie(device_cookie);
 
     Ok(resp.json(PreparationResp {
         ok: true,
@@ -127,10 +132,10 @@ pub async fn with_email(
         None => return Ok(HttpResponse::Forbidden().finish()),
     };
 
-    let email = &payload.email;
     let limiter = state.limiter.lock().await;
 
-    let k_email = format!("rl:email:{}", sha256_hex(email));
+    let email = &payload.email;
+    let k_email = format!("{}{}", EMAIL_PREFIX, sha256_hex(email));
     let window_ms = 60_000u64;
     let limit_email = 3u32;
 
@@ -161,14 +166,45 @@ pub async fn with_email(
     )
 )]
 #[post("/onboarding/otp-verification")]
-pub async fn otp_verification() -> actix_web::Result<impl Responder> {
-    // let raw_cookie_value = "d0f6768480878a56aff1eee818ddb7852963753e08039d288a93b7bb4fc57121.zorIpwreOcaiXwVY3hCwMiH-HNdHiW2QaERb4vtPLF0";
+pub async fn otp_verification(
+    req: HttpRequest,
+    payload: web::Json<EmailVerificationReq>,
+    onboarding_service: web::Data<OnboardingService>,
+) -> actix_web::Result<impl Responder> {
+    let cookie = onboarding_service
+        .verify_email(&payload.email, &payload.code, req.cookie(COOKIE_WITH_EMAIL))
+        .await?;
 
-    //     if let Some(nonce) = self.hmac_client.decode_cookie_value(raw_cookie_value) {
-    //         println!("Decoded nonce: {}", nonce);
-    //     } else {
-    //         println!("Invalid signature!");
-    //     }
-    let resp = HttpResponse::Ok();
-    Ok(resp)
+    let mut resp = HttpResponse::Ok();
+    resp.cookie(cookie);
+    Ok(resp.finish())
+}
+
+#[utoipa::path(
+    post,
+    path="/onboarding/user-details",
+    tag="onboarding",
+    responses(
+        (status = 200, description = "Prepare user for authentication"),
+        (status = 403, description = "Forbidden"),
+        (status = 429, description = "Too many requests"),
+    )
+)]
+#[post("/onboarding/user-details")]
+pub async fn user_details(
+    req: HttpRequest,
+    payload: web::Json<UserDetailsReq>,
+    onboarding_service: web::Data<OnboardingService>,
+) -> actix_web::Result<impl Responder> {
+    // 1) cookie check (decoded signature = actual email)
+
+    // 2) user creation
+
+    // 3) user_devices - we add a record in here - we get the __Host-device_id cookie value
+
+    // 4) generate jwt and automatically login the user.
+    
+    let mut resp = HttpResponse::Ok();
+    // resp.cookie(cookie);
+    Ok(resp.finish())
 }

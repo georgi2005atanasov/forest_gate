@@ -89,7 +89,8 @@ async fn main() -> std::io::Result<()> {
                     .service(features::system::config)
                     .service(features::system::update_config)
                     .service(features::onboarding::preparation)
-                    .service(features::onboarding::with_email),
+                    .service(features::onboarding::with_email)
+                    .service(features::onboarding::otp_verification),
             )
     })
     .bind("127.0.0.1:8080")?

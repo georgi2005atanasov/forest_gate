@@ -48,7 +48,7 @@ impl UserRepository {
             user_dto.phone_number,
             password_hash,
             salt,
-            false, // is_email_verified
+            true, // is_email_verified - every user is created after email verification
             false, // is_phone_verified
             user_dto.login_method as LoginMethod,
             Utc::now(),

@@ -47,9 +47,9 @@ impl ClientHMAC {
     }
 
     /// Encode cookie value as `id.sig`.
-    pub fn encode_cookie_value(&self, visitor_id: &str) -> String {
-        let sig = self.sign(visitor_id);
-        format!("{visitor_id}.{sig}")
+    pub fn encode_cookie_value(&self, value: &str) -> String {
+        let sig = self.sign(value);
+        format!("{value}.{sig}")
     }
 
     /// Decode cookie value. Returns `Some(visitor_id)` only if signature is valid.
