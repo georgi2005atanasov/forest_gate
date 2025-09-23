@@ -1,11 +1,15 @@
-#[derive(Debug, Serialize, Deserialize, Validate)]
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
+use validator::Validate;
+
+use crate::features::users::{LoginMethod, User};
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CreateUserDto {
-    #[validate(length(min = 3, max = 50))]
     pub username: String,
-    #[validate(email)]
     pub email: String,
     pub phone_number: Option<String>,
-    #[validate(length(min = 8))]
     pub password: String,
     pub login_method: LoginMethod,
 }
@@ -37,4 +41,24 @@ impl From<User> for UserResponse {
             updated_at: user.updated_at,
         }
     }
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema, Validate)]
+pub struct UserDetailsReq {
+    #[validate(email)]
+    pub email: String,
+    #[validate(length(min = 8))]
+    pub password: String,
+    #[validate(length(min = 8))]
+    pub confirm_password: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema, Validate)]
+pub struct UserLoginReq {
+    #[validate(email)]
+    pub email: Option<String>,
+    #[validate(length(min = 3, max = 50))]
+    pub username: Option<String>,
+    #[validate(length(min = 8))]
+    pub password: String,
 }

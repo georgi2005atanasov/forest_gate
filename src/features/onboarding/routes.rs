@@ -1,18 +1,20 @@
 use std::u64;
 
 use actix_web::{post, web, HttpRequest, HttpResponse, Responder};
+use validator::Validate;
 
 use crate::features::{
     clients::EmailClient,
     onboarding::{
         get_client_ip, ip_to_bucket, parse_ip, sha256_hex,
         types::{
-            AppState, EmailVerificationReq, PreparationReq, PreparationResp, UserDetailsReq,
-            WithEmailReq, WithEmailResp,
+            AppState, EmailVerificationReq, PreparationReq, PreparationResp, WithEmailReq,
+            WithEmailResp,
         },
         OnboardingService, COOKIE_VISITOR, COOKIE_WITH_EMAIL, EMAIL_PREFIX, INSTALL_PREFIX,
         IP_PREFIX, VISITOR_PREFIX,
     },
+    users::types::UserDetailsReq,
 };
 
 #[utoipa::path(
@@ -126,6 +128,10 @@ pub async fn with_email(
     onboarding_service: web::Data<OnboardingService>,
     email_client: web::Data<EmailClient>,
 ) -> actix_web::Result<impl Responder> {
+    if let Err(errors) = payload.validate() {
+        return Ok(HttpResponse::BadRequest().json(errors));
+    }
+
     // 1) verify the preparation cookie
     let _ = match onboarding_service.has_visitor_cookie(req.cookie(COOKIE_VISITOR)) {
         Some(id) => id,
@@ -160,9 +166,8 @@ pub async fn with_email(
     path="/onboarding/otp-verification",
     tag="onboarding",
     responses(
-        (status = 200, description = "Prepare user for authentication"),
+        (status = 200, description = "Email verified successfuly"),
         (status = 403, description = "Forbidden"),
-        (status = 429, description = "Too many requests"),
     )
 )]
 #[post("/onboarding/otp-verification")]
@@ -171,6 +176,10 @@ pub async fn otp_verification(
     payload: web::Json<EmailVerificationReq>,
     onboarding_service: web::Data<OnboardingService>,
 ) -> actix_web::Result<impl Responder> {
+    if let Err(errors) = payload.validate() {
+        return Ok(HttpResponse::BadRequest().json(errors));
+    }
+
     let cookie = onboarding_service
         .verify_email(&payload.email, &payload.code, req.cookie(COOKIE_WITH_EMAIL))
         .await?;
@@ -185,9 +194,8 @@ pub async fn otp_verification(
     path="/onboarding/user-details",
     tag="onboarding",
     responses(
-        (status = 200, description = "Prepare user for authentication"),
+        (status = 200, description = "User registered"),
         (status = 403, description = "Forbidden"),
-        (status = 429, description = "Too many requests"),
     )
 )]
 #[post("/onboarding/user-details")]
@@ -196,14 +204,18 @@ pub async fn user_details(
     payload: web::Json<UserDetailsReq>,
     onboarding_service: web::Data<OnboardingService>,
 ) -> actix_web::Result<impl Responder> {
+    if let Err(errors) = payload.validate() {
+        return Ok(HttpResponse::BadRequest().json(errors));
+    }
+
     // 1) cookie check (decoded signature = actual email)
 
-    // 2) user creation
+    // 2) create user
 
     // 3) user_devices - we add a record in here - we get the __Host-device_id cookie value
 
-    // 4) generate jwt and automatically login the user.
-    
+    // 4) generate jwt and store it in cookie and automatically login the user.
+
     let mut resp = HttpResponse::Ok();
     // resp.cookie(cookie);
     Ok(resp.finish())

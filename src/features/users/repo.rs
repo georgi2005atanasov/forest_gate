@@ -1,6 +1,7 @@
-use sqlx::PgPool;
+use super::{LoginMethod, User};
+use crate::features::users::types::CreateUserDto;
 use chrono::Utc;
-use crate::models::user::{User, CreateUserDto, LoginMethod};
+use sqlx::PgPool;
 
 pub struct UserRepository {
     pool: PgPool,
@@ -11,7 +12,12 @@ impl UserRepository {
         Self { pool }
     }
 
-    pub async fn create(&self, user_dto: CreateUserDto, password_hash: String, salt: Vec<u8>) -> Result<User, sqlx::Error> {
+    pub async fn create(
+        &self,
+        user_dto: CreateUserDto,
+        password_hash: String,
+        salt: Vec<u8>,
+    ) -> Result<User, sqlx::Error> {
         let user = sqlx::query_as!(
             User,
             r#"
@@ -48,7 +54,7 @@ impl UserRepository {
             user_dto.phone_number,
             password_hash,
             salt,
-            true, // is_email_verified - every user is created after email verification
+            true,  // is_email_verified - every user is created after email verification
             false, // is_phone_verified
             user_dto.login_method as LoginMethod,
             Utc::now(),

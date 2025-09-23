@@ -129,10 +129,6 @@ impl OnboardingService {
         (new_id, Some(cookie))
     }
 
-    /// If something is wrong, an exception is thrown
-    /// If verification is passed:
-    /// - a user is created
-    /// - a record is added to user_devices
     pub(super) async fn verify_email(
         &self,
         email: &str,

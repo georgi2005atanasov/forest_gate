@@ -1,6 +1,3 @@
-use crate::features::onboarding::types::StableFingerprintData;
-use chrono::Utc;
-use sqlx::types::Json;
 use sqlx::PgPool;
 
 use super::{types::CreateDeviceDto, Device, DeviceStatus};

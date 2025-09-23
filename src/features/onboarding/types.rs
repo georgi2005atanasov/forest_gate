@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use utoipa::ToSchema;
+use validator::Validate;
 
 use crate::features::onboarding::RateLimiter;
 
@@ -85,9 +86,10 @@ pub(super) struct PreparationResp {
     pub(super) visitor_id: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, Validate)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct WithEmailReq {
+    #[validate(email)]
     pub(super) email: String,
 }
 
@@ -97,16 +99,11 @@ pub(super) struct WithEmailResp {
     pub(super) ok: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema, Validate)]
 pub(super) struct EmailVerificationReq {
     // can be further more checked, but for speed purposes we leave it :)
+    #[validate(email)]
     pub(super) email: String,
+    #[validate(length(min = 6, max = 6))]
     pub(super) code: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub(super) struct UserDetailsReq {
-    pub(super) email: String,
-    pub(super) password: String,
-    pub(super) confirm_password: String,
 }
