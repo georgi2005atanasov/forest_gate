@@ -20,6 +20,8 @@ use utoipa_swagger_ui::SwaggerUi;
 use crate::features::onboarding::types::AppState;
 use crate::features::onboarding::utils::RateLimiter;
 use crate::features::users::UserService;
+use crate::features::ws::job::flush_worker;
+use crate::features::ws::ws_upgrade;
 use crate::utils::crypto::ClientHMAC;
 use tokio::sync::Mutex;
 
@@ -42,6 +44,8 @@ async fn main() -> std::io::Result<()> {
         redis::create_pool(&redis_settings.redis_url).expect("Failed to create Redis pool");
     // endregion persistence
 
+    tokio::spawn(flush_worker(redis_pool.clone()));
+
     // region services
     let hmac_client = make_hmac_from_env();
     let config_service = ConfigService::new(db_pool.clone(), redis_pool.clone());
@@ -54,6 +58,7 @@ async fn main() -> std::io::Result<()> {
     let limiter = RateLimiter::new(redis_pool.clone());
     let app_state = web::Data::new(AppState {
         limiter: Mutex::new(limiter),
+        redis: redis_pool.clone(),
     });
     // endregion rate Limiting
 
@@ -67,12 +72,12 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
+            .app_data(app_state.clone())
             .app_data(web::Data::new(email_client.clone()))
             .app_data(web::Data::new(db_pool.clone()))
             .app_data(web::Data::new(redis_pool.clone()))
             .app_data(web::Data::new(config_service.clone()))
             .app_data(web::Data::new(onboarding_service.clone()))
-            .app_data(app_state.clone())
             .wrap(Logger::default())
             .wrap(
                 Cors::default()
@@ -94,6 +99,7 @@ async fn main() -> std::io::Result<()> {
                     .service(features::onboarding::with_email)
                     .service(features::onboarding::otp_verification),
             )
+        // .route("/ws", actix_web::web::get().to(ws_upgrade))
     })
     .bind("127.0.0.1:8080")?
     .run()

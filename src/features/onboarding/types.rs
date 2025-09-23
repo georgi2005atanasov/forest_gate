@@ -1,3 +1,4 @@
+use deadpool_redis::Pool;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use utoipa::ToSchema;
@@ -7,6 +8,7 @@ use crate::features::onboarding::RateLimiter;
 
 pub struct AppState {
     pub limiter: Mutex<RateLimiter>,
+    pub redis: Pool,
 }
 
 // ====== Request structs (camelCase JSON) ======
