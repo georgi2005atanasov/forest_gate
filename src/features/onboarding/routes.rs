@@ -1,24 +1,32 @@
 use std::u64;
 
-use actix_web::{post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{
+    cookie::{Cookie, SameSite},
+    post, web, HttpRequest, HttpResponse, Responder,
+};
+use time::Duration;
 use validator::Validate;
 
-use crate::{
-    features::{
-        clients::EmailClient,
-        onboarding::{
-            get_client_ip, ip_to_bucket, parse_ip, sha256_hex,
-            types::{
-                AppState, EmailVerificationReq, PreparationReq, PreparationResp, UserDetailsResp,
-                WithEmailReq, WithEmailResp,
-            },
-            OnboardingService, COOKIE_DEVICE_ID, COOKIE_EMAIL_VERIFIED, COOKIE_VISITOR,
-            COOKIE_WITH_EMAIL, EMAIL_PREFIX, INSTALL_PREFIX, IP_PREFIX, VISITOR_PREFIX,
+use crate::features::{
+    clients::EmailClient,
+    onboarding::{
+        get_client_ip, ip_to_bucket, parse_ip, sha256_hex,
+        types::{
+            AppState, EmailVerificationReq, PreparationReq, PreparationResp, UserDetailsResp,
+            WithEmailReq, WithEmailResp,
         },
-        users::types::UserDetailsReq,
+        OnboardingService, EMAIL_PREFIX, INSTALL_PREFIX, IP_PREFIX, VISITOR_PREFIX,
     },
-    utils::error::Error,
+    users::types::UserDetailsReq,
 };
+
+/// region Cookies
+pub const COOKIE_VISITOR: &str = "__Host-visitor_id";
+pub const COOKIE_WITH_EMAIL: &str = "__Host-with_email";
+pub const COOKIE_EMAIL_VERIFIED: &str = "__Host-email_verified";
+pub const COOKIE_DEVICE_ID: &str = "__Host-device_id";
+pub const COOKIE_USER_ID: &str = "__Host-user_id";
+/// endregion Cookies
 
 #[utoipa::path(
     get,
@@ -37,8 +45,9 @@ pub async fn preparation(
     onboarding_service: web::Data<OnboardingService>,
 ) -> actix_web::Result<impl Responder> {
     // 1) visitor cookie
-    let (visitor_id, maybe_cookie) =
-        onboarding_service.read_or_set_visitor_cookie(req.cookie(COOKIE_VISITOR));
+    let cookie_value = req.cookie(COOKIE_VISITOR).map(|c| c.value().to_string());
+    let (visitor_id, maybe_value) =
+        onboarding_service.read_or_set_visitor_cookie(cookie_value.as_deref());
 
     print!("{:?}", payload.extra_data);
 
@@ -96,14 +105,28 @@ pub async fn preparation(
     }
 
     // Ensure device exists or create one
-    let (_device, device_cookie) = onboarding_service
+    let device = onboarding_service
         .ensure_device_from_preparation(&payload)
         .await?;
+    let device_cookie = Cookie::build(COOKIE_DEVICE_ID, device.id.to_string())
+        .http_only(true)
+        .secure(true)
+        .same_site(SameSite::Lax)
+        .max_age(Duration::days(180))
+        .path("/") // required for __Host- prefix (and do not set Domain)
+        .finish();
 
     // 6) Build response
     let mut resp = HttpResponse::Ok();
-    if let Some(c) = maybe_cookie {
-        resp.cookie(c);
+    if let Some(value) = maybe_value {
+        let cookie = Cookie::build(COOKIE_VISITOR, value)
+            .http_only(true)
+            .secure(true)
+            .same_site(SameSite::Lax)
+            .max_age(Duration::days(180))
+            .path("/")
+            .finish();
+        resp.cookie(cookie);
     }
     resp.cookie(device_cookie);
 
@@ -158,7 +181,15 @@ pub async fn with_email(
         return Ok(HttpResponse::TooManyRequests().finish());
     }
 
-    let cookie = onboarding_service.send_otp(email, &email_client).await?;
+    let cookie_value = onboarding_service.send_otp(email, &email_client).await?;
+    let cookie = Cookie::build(COOKIE_WITH_EMAIL, cookie_value)
+        .http_only(true)
+        .secure(true)
+        .same_site(SameSite::Lax)
+        .max_age(Duration::minutes(10)) // same as OTP TTL
+        .path("/") // required for __Host-*
+        .finish();
+
     let mut resp = HttpResponse::Ok();
     resp.cookie(cookie);
     Ok(resp.json(WithEmailResp { ok: true }))
@@ -183,9 +214,19 @@ pub async fn otp_verification(
         return Ok(HttpResponse::BadRequest().json(errors));
     }
 
-    let cookie = onboarding_service
-        .verify_email(&payload.email, &payload.code, req.cookie(COOKIE_WITH_EMAIL))
+    let cookie_value = req.cookie(COOKIE_WITH_EMAIL).map(|c| c.value().to_string());
+
+    let cookie_value = onboarding_service
+        .verify_email(&payload.email, &payload.code, cookie_value.as_deref())
         .await?;
+
+    let cookie = Cookie::build(COOKIE_EMAIL_VERIFIED, cookie_value)
+        .http_only(true)
+        .secure(true)
+        .same_site(SameSite::Lax)
+        .max_age(Duration::days(180))
+        .path("/") // required for __Host-prefix (and do not set Domain)
+        .finish();
 
     let mut resp = HttpResponse::Ok();
     resp.cookie(cookie);
@@ -235,7 +276,7 @@ pub async fn user_details(
     println!("device id: {}\n email: {}", device_id, email);
 
     // 2) create user + user_devices
-    let (user_id, _device_id, user_cookie) = onboarding_service
+    let (user_id, _device_id) = onboarding_service
         .ensure_user_with_device(
             &device_id,
             &email,
@@ -244,6 +285,13 @@ pub async fn user_details(
         )
         .await?;
 
+    let user_cookie = Cookie::build(COOKIE_USER_ID, user_id.to_string())
+        .http_only(true)
+        .secure(true)
+        .same_site(SameSite::Lax)
+        .max_age(Duration::days(180))
+        .path("/") // required for __Host- prefix (and do not set Domain)
+        .finish();
     // 4) generate jwt and store it in cookie and automatically login the user.
 
     let mut resp = HttpResponse::Ok();
