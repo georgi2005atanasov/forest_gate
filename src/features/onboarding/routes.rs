@@ -3,18 +3,21 @@ use std::u64;
 use actix_web::{post, web, HttpRequest, HttpResponse, Responder};
 use validator::Validate;
 
-use crate::features::{
-    clients::EmailClient,
-    onboarding::{
-        get_client_ip, ip_to_bucket, parse_ip, sha256_hex,
-        types::{
-            AppState, EmailVerificationReq, PreparationReq, PreparationResp, WithEmailReq,
-            WithEmailResp,
+use crate::{
+    features::{
+        clients::EmailClient,
+        onboarding::{
+            get_client_ip, ip_to_bucket, parse_ip, sha256_hex,
+            types::{
+                AppState, EmailVerificationReq, PreparationReq, PreparationResp, UserDetailsResp,
+                WithEmailReq, WithEmailResp,
+            },
+            OnboardingService, COOKIE_DEVICE_ID, COOKIE_EMAIL_VERIFIED, COOKIE_VISITOR,
+            COOKIE_WITH_EMAIL, EMAIL_PREFIX, INSTALL_PREFIX, IP_PREFIX, VISITOR_PREFIX,
         },
-        OnboardingService, COOKIE_VISITOR, COOKIE_WITH_EMAIL, EMAIL_PREFIX, INSTALL_PREFIX,
-        IP_PREFIX, VISITOR_PREFIX,
+        users::types::UserDetailsReq,
     },
-    users::types::UserDetailsReq,
+    utils::error::Error,
 };
 
 #[utoipa::path(
@@ -133,7 +136,7 @@ pub async fn with_email(
     }
 
     // 1) verify the preparation cookie
-    let _ = match onboarding_service.has_visitor_cookie(req.cookie(COOKIE_VISITOR)) {
+    let _ = match onboarding_service.has_valid_cookie(req.cookie(COOKIE_VISITOR)) {
         Some(id) => id,
         None => return Ok(HttpResponse::Forbidden().finish()),
     };
@@ -208,15 +211,42 @@ pub async fn user_details(
         return Ok(HttpResponse::BadRequest().json(errors));
     }
 
-    // 1) cookie check (decoded signature = actual email)
+    // 1) device id + email_verified cookies check (decoded signature = actual email)
+    let device_id: i64 = match req.cookie(COOKIE_DEVICE_ID) {
+        Some(c) => match c.value().parse::<i64>() {
+            Ok(id) => id,
+            Err(_) => return Ok(HttpResponse::Forbidden().finish()),
+        },
+        None => return Ok(HttpResponse::Forbidden().finish()),
+    };
 
-    // 2) create user
+    if let Some(cookie) = req.cookie(COOKIE_EMAIL_VERIFIED) {
+        // if cookie {
+        println!("cookie email: {:?}", cookie.value());
+        // }
+    } else {
+        return Ok(HttpResponse::Forbidden().finish());
+    }
+    let email = match onboarding_service.has_valid_cookie(req.cookie(COOKIE_EMAIL_VERIFIED)) {
+        Some(id) => id,
+        None => return Ok(HttpResponse::Forbidden().finish()),
+    };
 
-    // 3) user_devices - we add a record in here - we get the __Host-device_id cookie value
+    println!("device id: {}\n email: {}", device_id, email);
+
+    // 2) create user + user_devices
+    let (user_id, _device_id, user_cookie) = onboarding_service
+        .ensure_user_with_device(
+            &device_id,
+            &email,
+            &payload.password,
+            &payload.confirm_password,
+        )
+        .await?;
 
     // 4) generate jwt and store it in cookie and automatically login the user.
 
     let mut resp = HttpResponse::Ok();
-    // resp.cookie(cookie);
-    Ok(resp.finish())
+    resp.cookie(user_cookie);
+    Ok(resp.json(UserDetailsResp { user_id: user_id }))
 }

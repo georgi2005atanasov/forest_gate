@@ -15,6 +15,7 @@ pub enum Error {
     Db(sqlx::Error),
     Unexpected(String),
     InvalidOtp(String),
+    UserAlreadyExists,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -30,6 +31,7 @@ impl fmt::Display for Error {
             Error::Db(e) => write!(f, "database error: {e}"),
             Error::Unexpected(msg) => write!(f, "unexpected error: {msg}"),
             Error::InvalidOtp(msg) => write!(f, "invalid otp: {}", msg),
+            Error::UserAlreadyExists => write!(f, "user already exists"),
         }
     }
 }
@@ -85,6 +87,7 @@ impl ResponseError for Error {
             Error::Forbidden => StatusCode::FORBIDDEN,
             Error::InvalidOtp(_) => StatusCode::CONFLICT,
             Error::Db(_) | Error::Unexpected(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Error::UserAlreadyExists => StatusCode::CONFLICT,
         }
     }
 
@@ -98,6 +101,7 @@ impl ResponseError for Error {
             Error::Db(_) => ("DB_ERROR", self.to_string()),
             Error::Unexpected(_) => ("UNEXPECTED", self.to_string()),
             Error::InvalidOtp(_) => ("INVALID_OTP", self.to_string()),
+            Error::UserAlreadyExists => ("CONFLICT", self.to_string()),
         };
 
         let body = ErrorBody { code, message };

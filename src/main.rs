@@ -97,7 +97,8 @@ async fn main() -> std::io::Result<()> {
                     .service(features::system::update_config)
                     .service(features::onboarding::preparation)
                     .service(features::onboarding::with_email)
-                    .service(features::onboarding::otp_verification),
+                    .service(features::onboarding::otp_verification)
+                    .service(features::onboarding::user_details),
             )
         // .route("/ws", actix_web::web::get().to(ws_upgrade))
     })

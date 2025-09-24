@@ -1,7 +1,9 @@
 use actix_web::cookie::{Cookie, SameSite};
+use argon2::password_hash::{PasswordHasher, SaltString};
+use argon2::Argon2;
 use chrono::Datelike;
 use deadpool_redis::{redis::AsyncCommands, Pool};
-use password_hash::rand_core::{OsRng, RngCore};
+use password_hash::rand_core::{self, OsRng, RngCore};
 use sqlx::PgPool;
 use time::Duration;
 use uuid::Uuid;
@@ -11,6 +13,7 @@ use crate::{
         clients::EmailClient,
         devices::{types::CreateDeviceDto, Device, DeviceRepository},
         onboarding::types::PreparationReq,
+        users::{types::CreateUserDto, LoginMethod, User, UserRepository},
     },
     utils::{
         crypto::ClientHMAC,
@@ -23,6 +26,7 @@ pub const COOKIE_VISITOR: &str = "__Host-visitor_id";
 pub const COOKIE_WITH_EMAIL: &str = "__Host-with_email";
 pub const COOKIE_EMAIL_VERIFIED: &str = "__Host-email_verified";
 pub const COOKIE_DEVICE_ID: &str = "__Host-device_id";
+pub const COOKIE_USER_ID: &str = "__Host-user_id";
 /// endregion Cookies
 
 /// region Redis prefixes
@@ -35,9 +39,11 @@ pub const OTP_PREFIX: &str = "otp:with_email:v1:";
 
 #[derive(Clone)]
 pub struct OnboardingService {
-    pub hmac_client: ClientHMAC,
-    pub redis_pool: Pool,
-    pub device_repo: DeviceRepository,
+    hmac_client: ClientHMAC,
+    redis_pool: Pool,
+    device_repo: DeviceRepository,
+    user_repo: UserRepository,
+    pool: PgPool,
 }
 
 impl OnboardingService {
@@ -45,8 +51,19 @@ impl OnboardingService {
         Self {
             hmac_client,
             redis_pool,
-            device_repo: DeviceRepository::new(pool),
+            device_repo: DeviceRepository::new(pool.clone()),
+            user_repo: UserRepository::new(pool.clone()),
+            pool: pool.clone(),
         }
+    }
+
+    pub(super) fn has_valid_cookie(&self, cookie: Option<Cookie<'static>>) -> Option<String> {
+        if let Some(c) = cookie {
+            if let Some(id) = self.hmac_client.decode_cookie_value(c.value()) {
+                return Some(id);
+            }
+        }
+        None
     }
 
     /// returning the device + cookie containing the id of the device
@@ -87,23 +104,6 @@ impl OnboardingService {
         Ok((created, cookie))
     }
 
-    pub(super) fn has_visitor_cookie(&self, cookie: Option<Cookie<'static>>) -> Option<String> {
-        if let Some(c) = cookie {
-            if let Some(id) = self.hmac_client.decode_cookie_value(c.value()) {
-                return Some(id);
-            }
-        }
-        None
-    }
-
-    pub(super) async fn check_visitor_cookie_existence(&self, key: &str) -> Result<bool> {
-        let mut conn = self.redis_pool.get().await.map_err(Error::from)?;
-
-        // `EXISTS` returns i32 (0 = does not exist, 1 = exists)
-        let exists: i32 = conn.exists(key).await.map_err(Error::from)?;
-        Ok(exists > 0)
-    }
-
     pub(super) fn read_or_set_visitor_cookie(
         &self,
         cookie: Option<Cookie<'static>>,
@@ -129,6 +129,7 @@ impl OnboardingService {
         (new_id, Some(cookie))
     }
 
+    /// TODO: Add a check whether the user is already verified
     pub(super) async fn verify_email(
         &self,
         email: &str,
@@ -247,5 +248,105 @@ impl OnboardingService {
             .finish();
 
         Ok(cookie)
+    }
+
+    /// returns user and device id
+    pub(super) async fn ensure_user_with_device(
+        &self,
+        device_id: &i64,
+        email: &str,
+        password: &str,
+        confirm_password: &str,
+    ) -> Result<(i64, i64, Cookie<'_>)> {
+        // 1) basic checks
+        if password != confirm_password {
+            return Err(Error::InvalidOtp("passwords do not match".to_string()));
+        }
+
+        // 2) find or create the user
+        let user = if let Some(u) = self
+            .user_repo
+            .find_by_email(email)
+            .await
+            .map_err(Error::from)?
+        {
+            return Err(Error::UserAlreadyExists);
+        } else {
+            // Make a username from the email local part
+            let username = email.split('@').next().unwrap_or(email).to_string();
+
+            let user_dto = CreateUserDto {
+                username,
+                email: email.to_string(),
+                phone_number: None,
+                login_method: LoginMethod::WithPassword,
+            };
+
+            // Argon2 hashing
+            let salt = SaltString::generate(&mut OsRng);
+            let argon2 = Argon2::default();
+            let password_hash = argon2
+                .hash_password(password.as_bytes(), &salt)
+                .map_err(|_| Error::InvalidOtp("failed to hash password".to_string()))?
+                .to_string();
+
+            // FIX: salt is a string; convert to bytes explicitly
+            let salt_bytes: Vec<u8> = salt.as_str().as_bytes().to_vec();
+
+            self.user_repo
+                .create(user_dto, password_hash, salt_bytes)
+                .await
+                .map_err(Error::from)?
+        };
+
+        // 3) Is there an active device already?
+        // FIX A (simplest): use fetch_one so you get a plain bool (not Option<bool>)
+        let has_active_device = sqlx::query_scalar!(
+            r#"
+        SELECT EXISTS (
+          SELECT 1 FROM user_devices
+          WHERE user_id = $1 AND revoked_at IS NULL
+        )
+        "#,
+            user.id
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        let has_active_device = has_active_device.unwrap_or(false);
+
+        if has_active_device {
+            println!("User already has an active device");
+        } else {
+            println!("No active device found, this will be the primary one");
+        }
+
+        let is_primary = Some(has_active_device);
+
+        // 4) insert into user_devices, ignore if already linked
+        sqlx::query!(
+            r#"
+        INSERT INTO user_devices (user_id, device_id, is_primary)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (user_id, device_id) DO NOTHING
+        "#,
+            user.id,
+            device_id,
+            is_primary
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(Error::from)?;
+
+        let user_cookie = Cookie::build(COOKIE_USER_ID, user.id.to_string())
+            .http_only(true)
+            .secure(true)
+            .same_site(SameSite::Lax)
+            .max_age(Duration::days(180))
+            .path("/") // required for __Host- prefix (and do not set Domain)
+            .finish();
+
+        Ok((user.id, *device_id, user_cookie))
     }
 }

@@ -109,3 +109,9 @@ pub(super) struct EmailVerificationReq {
     #[validate(length(min = 6, max = 6))]
     pub(super) code: String,
 }
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct UserDetailsResp {
+    pub(super) user_id: i64,
+}

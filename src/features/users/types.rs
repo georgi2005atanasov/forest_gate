@@ -10,7 +10,6 @@ pub struct CreateUserDto {
     pub username: String,
     pub email: String,
     pub phone_number: Option<String>,
-    pub password: String,
     pub login_method: LoginMethod,
 }
 
@@ -44,6 +43,7 @@ impl From<User> for UserResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, Validate)]
+#[serde(rename_all = "camelCase")]
 pub struct UserDetailsReq {
     #[validate(email)]
     pub email: String,
@@ -54,6 +54,7 @@ pub struct UserDetailsReq {
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, Validate)]
+#[serde(rename_all = "camelCase")]
 pub struct UserLoginReq {
     #[validate(email)]
     pub email: Option<String>,
@@ -61,4 +62,13 @@ pub struct UserLoginReq {
     pub username: Option<String>,
     #[validate(length(min = 8))]
     pub password: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct UserDevice {
+    pub user_id: i64,
+    pub device_id: i64,
+    pub paired_at: DateTime<Utc>,
+    pub is_primary: bool,
+    pub revoked_at: Option<DateTime<Utc>>,
 }

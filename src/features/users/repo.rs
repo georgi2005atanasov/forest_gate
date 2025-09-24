@@ -1,8 +1,9 @@
-use super::{LoginMethod, User};
-use crate::features::users::types::CreateUserDto;
+use super::{User};
+use crate::features::users::{types::CreateUserDto, LoginMethod};
 use chrono::Utc;
 use sqlx::PgPool;
 
+#[derive(Clone)]
 pub struct UserRepository {
     pool: PgPool,
 }
