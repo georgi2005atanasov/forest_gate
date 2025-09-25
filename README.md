@@ -6,7 +6,7 @@ The system adds **🧩 Isolation Forest anomaly detection**, **🤖 LLM behavior
 
 **Admin Frontend:** https://github.com/georgi2005atanasov/forest_gate_frontend
 
-> ⚠️ Status: **Active development / not finished yet** (APIs and UI may change).
+> ⚠️ Status: **Active development / not finished yet** (APIs and UI will change).
 
 ---
 
@@ -69,15 +69,6 @@ The system adds **🧩 Isolation Forest anomaly detection**, **🤖 LLM behavior
 - **🌍 MaxMind** — ASN, country, city from IP  
 - **📧 SendGrid** — security notifications and alert templates  
 - **🖥 Frontend (Admin UI)** — https://github.com/georgi2005atanasov/forest_gate_frontend
-
----
-
-## 🔐 Security Posture
-
-- 🧑‍💻 Principle of least privilege and clear admin roles  
-- 🔑 Strong token handling and safe defaults  
-- 🕵️ Privacy-aware event storage and retention options  
-- 🌐 HTTPS by default in production
 
 ---
 
