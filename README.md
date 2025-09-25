@@ -10,6 +10,18 @@ The system adds **🧩 Isolation Forest anomaly detection**, **🤖 LLM behavior
 
 ---
 
+### 🫟 What this repo is
+
+* A prototype auth system in Rust
+* A playground for combining ML and auth signals
+* A playground for building structured, opinionated backend flows
+
+### ❌ What it’s not
+
+* A plug-and-play production-ready system
+* A security-audited service
+* Fully feature-complete
+
 ## 💡 Why Forest Gate
 
 - **🛡 Catch risky logins** with Isolation Forest risk scoring  
