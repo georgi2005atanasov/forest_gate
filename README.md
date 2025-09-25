@@ -113,11 +113,23 @@ The system adds **🧩 Isolation Forest anomaly detection**, **🤖 LLM behavior
 **Is it production-ready?**  
 Not yet. It is **under active development** and features can change.
 
-**Can I tune the anomaly threshold?**  
-Yes. The Isolation Forest threshold is configurable.
-
 **Do I need a paid MaxMind plan?**  
-You can start with GeoLite2 and upgrade later.
+You can start with their free versions and upgrade later.
 
 **Does it support admin dashboards?**  
-Yes—the **Forest Gate Frontend** gives monitoring and control.
+Yes—the **Forest Gate Frontend** gives monitoring and control. (This section is under development)
+
+**What environment variables do i need to add?**
+Here is a list of the environment variables you **MUST** add to your project in order to run it:
+```
+SENDGRID_API_KEY=Your_SendGrid_ApiKey
+FROM_EMAIL=your_email@example.com
+FROM_NAME="Your Name"
+REPLY_TO_EMAIL=reply_to_email@example.com
+NOTIFY_EMAIL=notify_email@example.com
+VISITOR_HMAC_KEY=32 bit HMAC key
+AUTH_EC_PRIVATE_PEM_PATH=/path/to/ec_private.pem
+AUTH_EC_PUBLIC_PEM_PATH=/path/to/ec_public.pem
+AUTH_ISSUER=issuer_name
+AUTH_AUDIENCE=issuer_audience
+```
