@@ -15,6 +15,7 @@ use config::traits::Env;
 use features::clients::EmailClient;
 use features::onboarding::OnboardingService;
 use features::system::ConfigService;
+use forest_gate::seeding;
 use infrastructure::persistence::{db, redis};
 use swagger::ApiDoc;
 use utoipa::OpenApi;
@@ -24,6 +25,7 @@ use crate::features::clients::MaxMindClient;
 use crate::features::onboarding::types::AppState;
 use crate::features::onboarding::utils::RateLimiter;
 use crate::features::ws::job::flush_worker;
+
 // use crate::features::ws::ws_upgrade;
 use crate::utils::crypto::ClientHMAC;
 use tokio::sync::Mutex;
@@ -46,7 +48,7 @@ async fn main() -> std::io::Result<()> {
     let redis_pool =
         redis::create_pool(&redis_settings.redis_url).expect("Failed to create Redis pool");
     // endregion persistence
-
+    // seeding::run(&db_pool).await.expect("seeding failed");
     tokio::spawn(flush_worker(redis_pool.clone()));
 
     // region services
@@ -54,18 +56,13 @@ async fn main() -> std::io::Result<()> {
     let onboarding_service =
         OnboardingService::new(hmac_client, db_pool.clone(), redis_pool.clone());
 
-    let ec_priv_path = env::var("AUTH_EC_PRIVATE_PEM_PATH").expect("AUTH_EC_PRIVATE_PEM_PATH");
-    let ec_pub_path = env::var("AUTH_EC_PUBLIC_PEM_PATH").expect("AUTH_EC_PUBLIC_PEM_PATH");
-    let ec_priv = std::fs::read(ec_priv_path).expect("read private key");
-    let ec_pub = std::fs::read(ec_pub_path).expect("read public key");
     let issuer = env::var("AUTH_ISSUER").unwrap_or_else(|_| "my-issuer".into());
     let audience = env::var("AUTH_AUDIENCE").unwrap_or_else(|_| "my-audience".into());
 
     let config_service = Arc::new(ConfigService::new(db_pool.clone(), redis_pool.clone()));
 
     let token_service = Arc::new(
-        TokenService::new(config_service.clone(), &ec_priv, &ec_pub, issuer, audience)
-            .expect("init TokenService"),
+        TokenService::new(config_service.clone(), issuer, audience).expect("init TokenService"),
     );
 
     let maxmind_client = Arc::new(MaxMindClient::from_env_or_default().expect("load maxmind dbs"));

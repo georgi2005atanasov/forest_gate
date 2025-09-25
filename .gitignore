@@ -49,4 +49,4 @@ build/
 # If you use SQLx offline mode, usually commit .sqlx.
 # Uncomment the next line ONLY if you generate it locally and don't want to commit.
 # .sqlx/
-
+/tests/venv

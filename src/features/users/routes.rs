@@ -19,6 +19,7 @@ pub async fn login(
     payload: web::Json<UserLoginReq>,
     user_service: web::Data<UserService>,
 ) -> actix_web::Result<impl Responder> {
+    println!("{:?}", payload);
     if let Err(errors) = payload.validate() {
         return Ok(actix_web::HttpResponse::BadRequest().json(errors));
     }

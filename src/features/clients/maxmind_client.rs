@@ -1,8 +1,9 @@
 // maxmind_client.rs
 
 use crate::utils::error::{Error, Result};
-use maxminddb::{geoip2, Reader}; // <-- make sure this is imported
+use maxminddb::{geoip2, Reader};
 use std::{net::IpAddr, path::Path, sync::Arc};
+use tracing::{info, error}; // <-- make sure this is imported
 
 // ---------- add this type ----------
 #[derive(Debug)]
@@ -53,17 +54,39 @@ impl MaxMindClient {
 
     pub fn lookup_all<'a>(&'a self, ip: IpAddr) -> Result<GeoIpInfo<'a>> {
         let asn = match (&*self.asn_reader).lookup::<geoip2::Asn>(ip) {
-            Ok(v) => v,
-            Err(e) => return Err(Error::Unexpected(format!("asn lookup error: {e}"))),
+            Ok(v) => {
+                info!(%ip, "ASN lookup success: {:?}", v);
+                v
+            }
+            Err(e) => {
+                error!(%ip, error = %e, "ASN lookup failed");
+                return Err(Error::Unexpected(format!("asn lookup error: {e}")));
+            }
         };
+
         let city = match (&*self.city_reader).lookup::<geoip2::City>(ip) {
-            Ok(v) => v,
-            Err(e) => return Err(Error::Unexpected(format!("city lookup error: {e}"))),
+            Ok(v) => {
+                info!(%ip, "City lookup success");
+                v
+            }
+            Err(e) => {
+                error!(%ip, error = %e, "City lookup failed");
+                return Err(Error::Unexpected(format!("city lookup error: {e}")));
+            }
         };
+
         let country = match (&*self.country_reader).lookup::<geoip2::Country>(ip) {
-            Ok(v) => v,
-            Err(e) => return Err(Error::Unexpected(format!("country lookup error: {e}"))),
+            Ok(v) => {
+                info!(%ip, "Country lookup success");
+                v
+            }
+            Err(e) => {
+                error!(%ip, error = %e, "Country lookup failed");
+                return Err(Error::Unexpected(format!("country lookup error: {e}")));
+            }
         };
+
+        info!("GeoIP lookup complete: {:?}, {:?}, {:?}", asn, city, country);
         Ok(GeoIpInfo { asn, city, country })
     }
 }

@@ -42,17 +42,15 @@ impl TokenService {
     /// `ec_public_pem` must be the matching public key.
     pub fn new(
         cfg: Arc<ConfigService>,
-        ec_private_pem: &[u8],
-        ec_public_pem: &[u8],
         issuer: impl Into<String>,
         audience: impl Into<String>,
     ) -> Result<Self> {
+        let enc_key = EncodingKey::from_ec_pem(&std::fs::read("scripts/ec_private_pkcs8.pem")?)?;
+        let dec_key = DecodingKey::from_ec_pem(&std::fs::read("scripts/ec_public.pem")?)?;
         Ok(Self {
             cfg,
-            enc_key: EncodingKey::from_ec_pem(ec_private_pem)
-                .map_err(|e| Error::Unexpected(format!("EC private key error: {e}")))?,
-            dec_key: DecodingKey::from_ec_pem(ec_public_pem)
-                .map_err(|e| Error::Unexpected(format!("EC public key error: {e}")))?,
+            enc_key,
+            dec_key,
             issuer: issuer.into(),
             audience: audience.into(),
         })

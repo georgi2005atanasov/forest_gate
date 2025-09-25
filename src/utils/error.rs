@@ -108,3 +108,15 @@ impl ResponseError for Error {
         HttpResponse::build(self.status_code()).json(body)
     }
 }
+
+impl From<jsonwebtoken::errors::Error> for Error {
+    fn from(err: jsonwebtoken::errors::Error) -> Self {
+        Error::Unexpected(format!("JWT error: {err}"))
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(err: std::io::Error) -> Self {
+        Error::Unexpected(format!("I/O error: {err}"))
+    }
+}

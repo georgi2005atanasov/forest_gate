@@ -51,6 +51,8 @@ impl UserService {
             .realip_remote_addr()
             .and_then(|s| s.parse().ok());
 
+        println!("IP: {:?}", client_ip);
+
         // 2) find user (email or username)
         let (login_id_label, login_id_value) = if let Some(ref email) = payload.email {
             ("email", email.to_string())
@@ -75,10 +77,13 @@ impl UserService {
         let user = match user_opt {
             Some(u) => u,
             None => {
+                println!("USER: {:?}", user_opt);
                 let _ = log_login_attempt(&self.pool, &self.maxmind, None, client_ip, false).await;
                 return Ok(Error::Unauthorized.error_response());
             }
         };
+
+        println!("USER 2: {:?}", user);
 
         // 3) password
         let ok = verify_password(&user.password_hash, &payload.password)
@@ -88,6 +93,8 @@ impl UserService {
                 log_login_attempt(&self.pool, &self.maxmind, Some(user.id), client_ip, false).await;
             return Ok(Error::Unauthorized.error_response());
         }
+
+        println!("PASSWORD: {:?}", ok);
 
         // 4) device cookie
         let device_id_cookie = req.cookie(COOKIE_DEVICE_ID);
