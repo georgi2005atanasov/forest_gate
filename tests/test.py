@@ -17,8 +17,7 @@ from joblib import dump
 # 1) DB connection
 # -----------------------------
 DB_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://postgres:1234Kaima56@localhost:5432/auth"
+    "DATABASE_URL"
 )
 engine = create_engine(DB_URL, pool_pre_ping=True)
 
