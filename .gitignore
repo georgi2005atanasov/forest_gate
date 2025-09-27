@@ -8,6 +8,7 @@
 # --- Env & secrets ---
 .env
 .env.*
+.app.env
 !.env.example
 
 # --- Logs & runtime dumps ---
@@ -50,3 +51,4 @@ build/
 # Uncomment the next line ONLY if you generate it locally and don't want to commit.
 # .sqlx/
 /tests/venv
+/ssl

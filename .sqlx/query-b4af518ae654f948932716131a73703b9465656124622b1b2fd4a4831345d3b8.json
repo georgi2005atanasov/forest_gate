@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO user_devices (user_id, device_id, is_primary)\n        VALUES ($1, $2, $3)\n        ON CONFLICT (user_id, device_id) DO NOTHING\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b4af518ae654f948932716131a73703b9465656124622b1b2fd4a4831345d3b8"
+}

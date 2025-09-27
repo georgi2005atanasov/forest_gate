@@ -1,0 +1,138 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n    INSERT INTO devices\n      (os_name, os_version, locale, device_type, device_status, app_version, fingerprint, extra_data, created_at)\n    VALUES\n      ($1,     $2,        $3,     $4,          $5,            $6,         $7,         $8,         $9)\n    RETURNING\n      id, os_name, os_version, locale,\n      device_type as \"device_type: _\",\n      device_status as \"device_status: _\",\n      app_version, fingerprint,\n      extra_data,                                  -- field type Option<JsonValue>\n      created_at, deleted_at\n    ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "os_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "os_version",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "locale",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "device_type: _",
+        "type_info": {
+          "Custom": {
+            "name": "device_type_enum",
+            "kind": {
+              "Enum": [
+                "unknown",
+                "mobile",
+                "tablet",
+                "pc",
+                "desktop"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "device_status: _",
+        "type_info": {
+          "Custom": {
+            "name": "device_status_enum",
+            "kind": {
+              "Enum": [
+                "active",
+                "inactive",
+                "blocked"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "app_version",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "fingerprint",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "extra_data",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "deleted_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        {
+          "Custom": {
+            "name": "device_type_enum",
+            "kind": {
+              "Enum": [
+                "unknown",
+                "mobile",
+                "tablet",
+                "pc",
+                "desktop"
+              ]
+            }
+          }
+        },
+        {
+          "Custom": {
+            "name": "device_status_enum",
+            "kind": {
+              "Enum": [
+                "active",
+                "inactive",
+                "blocked"
+              ]
+            }
+          }
+        },
+        "Text",
+        "Text",
+        "Jsonb",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "fa26e37ddc287a9249b5026529cff8b91455f170fca6df115e51465976e9ad29"
+}

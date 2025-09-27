@@ -83,6 +83,8 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for SessionWs {
                 })
                 .to_string();
 
+                ctx.text(r#"{"status":"stored"}"#);
+
                 let key = self.buf_key();
                 let pool = self.redis.clone();
                 spawn(async move {

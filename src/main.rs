@@ -48,6 +48,7 @@ async fn main() -> std::io::Result<()> {
     let redis_pool =
         redis::create_pool(&redis_settings.redis_url).expect("Failed to create Redis pool");
     // endregion persistence
+
     // seeding::run(&db_pool).await.expect("seeding failed");
     tokio::spawn(flush_worker(redis_pool.clone()));
 
@@ -103,7 +104,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
             .wrap(
                 Cors::default()
-                    .allowed_origin("http://localhost:5173")
+                    .allow_any_origin()
                     .allowed_methods(vec!["GET", "POST", "PUT", "OPTIONS"])
                     .allow_any_header()
                     .supports_credentials(),
@@ -123,9 +124,13 @@ async fn main() -> std::io::Result<()> {
                     .service(features::onboarding::user_details)
                     .service(features::users::login),
             )
-        // .route("/ws", actix_web::web::get().to(ws_upgrade))
+            // .service(
+            //     web::scope("/ws")
+            //         .route("", web::get().to(ws_upgrade))
+            //         .route("/", web::get().to(ws_upgrade)),
+            // )
     })
-    .bind("127.0.0.1:8080")?
+    .bind(("0.0.0.0", 8080))?
     .run()
     .await
 }
