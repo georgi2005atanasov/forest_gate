@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::features::clients::EmailClient;
 use actix_web::error::ErrorInternalServerError;
 use actix_web::{get, put, web, HttpResponse, Result};
@@ -78,7 +80,7 @@ pub async fn version() -> Result<HttpResponse> {
     )
 )]
 #[get("/system/config")]
-pub async fn config(service: web::Data<ConfigService>) -> Result<HttpResponse> {
+pub async fn config(service: web::Data<Arc<ConfigService>>) -> Result<HttpResponse> {
     let cfg = service.get().await.map_err(ErrorInternalServerError)?;
     Ok(HttpResponse::Ok().json(ConfigDto::from(cfg)))
 }
@@ -95,7 +97,7 @@ pub async fn config(service: web::Data<ConfigService>) -> Result<HttpResponse> {
 )]
 #[put("/system/config")]
 pub async fn update_config(
-    service: web::Data<ConfigService>,
+    service: web::Data<Arc<ConfigService>>,
     email_client: web::Data<EmailClient>,
     payload: web::Json<ConfigDto>,
 ) -> Result<HttpResponse> {

@@ -22,6 +22,16 @@ impl ConfigDto {
                 "token_validity_seconds must be > 0".into(),
             ));
         }
+        if self.refresh_token_validity_seconds <= 0 {
+            return Err(Error::Validation(
+                "refresh_token_validity_seconds must be > 0".into(),
+            ));
+        }
+        if self.vector_similarity_threshold < 0 || self.vector_similarity_threshold > 100 {
+            return Err(Error::Validation(
+                "vector_similarity_threshold must be between 0 and 100".into(),
+            ));
+        }
         Ok(())
     }
 }

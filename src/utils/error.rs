@@ -1,5 +1,5 @@
 use actix_web::{http::StatusCode, HttpResponse, ResponseError};
-use serde::Serialize;
+use serde::{Serialize};
 use std::{
     error::Error as StdError,
     fmt::{self},
