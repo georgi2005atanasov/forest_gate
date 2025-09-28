@@ -16,7 +16,7 @@ validator = { version = "0.18", features = ["derive"] }
 
 # Sessions & Redis
 deadpool-redis = { version = "0.18", features = ["rt_tokio_1"] }
-time = "0.3"
+time = { version = "0.3", features = ["serde", "parsing", "macros"] }
 sha2 = "0.10"
 base64 = "0.22"
 hmac = "0.12"
@@ -30,7 +30,8 @@ sqlx = { version = "0.7", features = [
     "uuid",
     "chrono",
     "ipnetwork",
-    "bigdecimal"
+    "bigdecimal",
+    "time"
 ] }
 rand = "0.8"
 anyhow = "1"
@@ -42,7 +43,7 @@ password-hash = "0.5.0"
 jsonwebtoken = { version = "9.3.0", features = ["use_pem"] }
 
 # DX / Docs / Observability
-utoipa = { version = "5", features = ["actix_extras"] }
+utoipa = { version = "5", features = ["actix_extras", "chrono"] }
 utoipa-swagger-ui = { version = "8", features = ["actix-web"] }
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"

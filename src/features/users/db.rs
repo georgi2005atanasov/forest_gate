@@ -1,9 +1,8 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use chrono::{DateTime, Utc};
-use validator::Validate;
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, Copy)]
 #[sqlx(type_name = "login_method", rename_all = "snake_case")]
 pub enum LoginMethod {
     WithPassword,
@@ -21,7 +20,7 @@ pub struct User {
     pub salt: Vec<u8>,
     pub is_email_verified: bool,
     pub is_phone_verified: bool,
-    pub login_method: LoginMethod,
+    pub login_method: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub deleted_at: Option<DateTime<Utc>>,

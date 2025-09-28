@@ -246,7 +246,7 @@ impl OnboardingService {
                 username,
                 email: email.to_string(),
                 phone_number: None,
-                login_method: LoginMethod::WithPassword,
+                login_method: "with_password".to_string(),
             };
 
             // Argon2 hashing

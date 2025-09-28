@@ -802,6 +802,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d630bccd429a5bb5a64b5e94f693bfc48c9f8566418fda4c494cc94f911f87cc"
 dependencies = [
  "powerfmt",
+ "serde",
 ]
 
 [[package]]
@@ -3027,6 +3028,7 @@ dependencies = [
  "smallvec",
  "sqlformat",
  "thiserror 1.0.69",
+ "time",
  "tokio",
  "tokio-stream",
  "tracing",
@@ -3114,6 +3116,7 @@ dependencies = [
  "sqlx-core",
  "stringprep",
  "thiserror 1.0.69",
+ "time",
  "tracing",
  "uuid",
  "whoami",
@@ -3157,6 +3160,7 @@ dependencies = [
  "sqlx-core",
  "stringprep",
  "thiserror 1.0.69",
+ "time",
  "tracing",
  "uuid",
  "whoami",
@@ -3181,6 +3185,7 @@ dependencies = [
  "percent-encoding",
  "serde",
  "sqlx-core",
+ "time",
  "tracing",
  "url",
  "urlencoding",

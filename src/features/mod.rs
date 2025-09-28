@@ -5,3 +5,4 @@ pub mod onboarding;
 pub mod system;
 pub mod users;
 pub mod ws;
+pub mod admin;

@@ -15,6 +15,7 @@ use config::traits::Env;
 use features::clients::EmailClient;
 use features::onboarding::OnboardingService;
 use features::system::ConfigService;
+use features::admin::AdminService;
 use forest_gate::seeding;
 use infrastructure::persistence::{db, redis};
 use swagger::ApiDoc;
@@ -33,8 +34,11 @@ use tokio::sync::Mutex;
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenvy::dotenv().ok();
-    tracing_subscriber::fmt::init();
-
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .with_target(true)
+        .with_line_number(true)
+        .init();
     // region settings
     let email_client = EmailClient::from_env().expect("email client config");
     let pg_settings = config::DbSettings::from_env().expect("Failed to load settings");
@@ -74,6 +78,7 @@ async fn main() -> std::io::Result<()> {
         config_service.clone(),
         maxmind_client.clone(),
     );
+    let admin_service = AdminService::new(db_pool.clone());
     // endregion services
 
     // region rate Limiting
@@ -101,6 +106,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(config_service.clone()))
             .app_data(web::Data::new(onboarding_service.clone()))
             .app_data(web::Data::new(user_service.clone()))
+            .app_data(web::Data::new(admin_service.clone()))
             .wrap(Logger::default())
             .wrap(
                 Cors::default()
@@ -122,13 +128,14 @@ async fn main() -> std::io::Result<()> {
                     .service(features::onboarding::with_email)
                     .service(features::onboarding::otp_verification)
                     .service(features::onboarding::user_details)
-                    .service(features::users::login),
+                    .service(features::users::login)
+                    .service(features::admin::users),
             )
-            // .service(
-            //     web::scope("/ws")
-            //         .route("", web::get().to(ws_upgrade))
-            //         .route("/", web::get().to(ws_upgrade)),
-            // )
+        // .service(
+        //     web::scope("/ws")
+        //         .route("", web::get().to(ws_upgrade))
+        //         .route("/", web::get().to(ws_upgrade)),
+        // )
     })
     .bind(("0.0.0.0", 8080))?
     .run()
