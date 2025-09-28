@@ -71,7 +71,19 @@ impl UserRepository {
         let user = sqlx::query_as!(
             User,
             r#"
-            SELECT id, username, email, phone_number, password_hash, salt, is_email_verified, is_phone_verified, login_method as "login_method: LoginMethod", created_at, updated_at, deleted_at
+            SELECT
+                id,
+                username,
+                email,
+                phone_number,
+                password_hash,
+                salt,
+                is_email_verified,
+                is_phone_verified,
+                login_method as "login_method: LoginMethod",
+                created_at,
+                updated_at,
+                deleted_at
             FROM users 
             WHERE id = $1 AND deleted_at IS NULL
             "#,
@@ -87,7 +99,19 @@ impl UserRepository {
         let user = sqlx::query_as!(
             User,
             r#"
-            SELECT id, username, email, phone_number, password_hash, salt, is_email_verified, is_phone_verified, login_method as "login_method: LoginMethod", created_at, updated_at, deleted_at
+            SELECT
+                id,
+                username,
+                email,
+                phone_number,
+                password_hash,
+                salt,
+                is_email_verified,
+                is_phone_verified,
+                login_method as "login_method: LoginMethod",
+                created_at,
+                updated_at,
+                deleted_at
             FROM users 
             WHERE email = $1 AND deleted_at IS NULL
             "#,
@@ -103,7 +127,19 @@ impl UserRepository {
         let user = sqlx::query_as!(
             User,
             r#"
-            SELECT id, username, email, phone_number, password_hash, salt, is_email_verified, is_phone_verified, login_method as "login_method: LoginMethod", created_at, updated_at, deleted_at
+            SELECT
+                id,
+                username,
+                email,
+                phone_number,
+                password_hash,
+                salt,
+                is_email_verified,
+                is_phone_verified,
+                login_method as "login_method: LoginMethod",
+                created_at,
+                updated_at,
+                deleted_at
             FROM users 
             WHERE username = $1 AND deleted_at IS NULL
             "#,
