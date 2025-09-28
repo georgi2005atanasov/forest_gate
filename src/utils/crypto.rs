@@ -21,7 +21,7 @@ impl ClientHMAC {
         Self { key: key.to_vec() }
     }
 
-    /// Create from hex-encoded key (e.g., from env: `openssl rand -hex 32`).
+    /// Create from hex-encoded key (e.g., from .env: `openssl rand -hex 32`).
     pub fn from_hex_key(hex_key: &str) -> Result<Self, hex::FromHexError> {
         let key = hex::decode(hex_key)?;
         Ok(Self::new(&key))

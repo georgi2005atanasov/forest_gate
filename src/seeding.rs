@@ -453,7 +453,7 @@ fn weighted_index(n: usize, rng: &mut impl Rng) -> usize {
 }
 
 /* ---------------------- Minimal test main (optional) ---------------------- */
-// If you want to run as a standalone binary, uncomment this and set DATABASE_URL in env.
+// If you want to run as a standalone binary, uncomment this and set DATABASE_URL in .env.
 // #[tokio::main]
 // async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //     dotenvy::dotenv().ok();

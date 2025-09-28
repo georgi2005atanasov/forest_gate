@@ -19,18 +19,18 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 --   'with_phone_number'
 -- );
 
--- CREATE TYPE event_type_enum AS ENUM (
---   'config_change',
---   'login'
--- );
+CREATE TYPE event_type_enum AS ENUM (
+  'config_change',
+  'login'
+);
+--
+CREATE TYPE device_type_enum AS ENUM ('unknown', 'mobile', 'tablet', 'pc', 'desktop');
+--
+CREATE TYPE device_status_enum AS ENUM ('active', 'inactive', 'blocked');
+--
+CREATE TYPE session_status_enum AS ENUM ('active', 'expired', 'terminated');
 
--- CREATE TYPE device_type_enum AS ENUM ('unknown', 'mobile', 'tablet', 'pc');
-
--- CREATE TYPE device_status_enum AS ENUM ('active', 'inactive', 'blocked');
-
--- CREATE TYPE session_status_enum AS ENUM ('active', 'expired', 'terminated');
-
--- CREATE TYPE key_operation_enum AS ENUM ('auth', 'decryption', 'encryption');
+CREATE TYPE key_operation_enum AS ENUM ('auth', 'decryption', 'encryption');
 
 -- ======================
 -- Tables

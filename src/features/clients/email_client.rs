@@ -77,7 +77,7 @@ impl EmailClient {
 }
 
 fn missing_env(var: &'static str) -> Error {
-    Error::Validation(format!("missing env var: {var}"))
+    Error::Validation(format!("missing .env var: {var}"))
 }
 
 #[derive(Serialize)]

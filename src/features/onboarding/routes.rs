@@ -26,7 +26,6 @@ pub const COOKIE_WITH_EMAIL: &str = "__Host-with_email";
 pub const COOKIE_EMAIL_VERIFIED: &str = "__Host-email_verified";
 pub const COOKIE_DEVICE_ID: &str = "__Host-device_id";
 pub const COOKIE_USER_ID: &str = "__Host-user_id";
-/// endregion Cookies
 
 #[utoipa::path(
     get,

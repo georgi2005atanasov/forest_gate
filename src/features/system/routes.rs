@@ -12,7 +12,7 @@ use super::ConfigService;
 #[utoipa::path(
     get,
     path = "/system/health",
-    tag = "SystemController",
+    tag = "system",
     responses(
         (status = 200, description = "Get API health + other metadata")
     )
@@ -56,7 +56,7 @@ pub async fn health() -> Result<HttpResponse> {
 #[utoipa::path(
     get,
     path = "/system/version",
-    tag = "SystemController",
+    tag = "system",
     responses(
         (status = 200, description = "Get API version + other metadata")
     )
@@ -72,7 +72,7 @@ pub async fn version() -> Result<HttpResponse> {
 #[utoipa::path(
     get,
     path = "/system/config",
-    tag = "SystemController",
+    tag = "system",
     responses(
         (status = 200, description = "Get system config", body = ConfigDto)
     )
@@ -86,7 +86,7 @@ pub async fn config(service: web::Data<ConfigService>) -> Result<HttpResponse> {
 #[utoipa::path(
     put,
     path = "/system/config",
-    tag = "SystemController",
+    tag = "system",
     request_body = ConfigDto,
     responses(
         (status = 200, description = "Update system config successfully"),
