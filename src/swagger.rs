@@ -5,6 +5,7 @@ use forest_gate::features::{
     },
     system::{__path_config, __path_health, __path_update_config, __path_version},
     users::__path_login,
+    audits::__path_audit_batch
 };
 
 use utoipa::OpenApi;
@@ -24,7 +25,8 @@ use utoipa::OpenApi;
         user_details,
         with_email,
         login,
-        users
+        users,
+        audit_batch
     )
 )]
 pub struct ApiDoc;

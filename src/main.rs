@@ -7,25 +7,26 @@ mod utils;
 use std::env;
 use std::sync::Arc;
 
+use crate::features::audits::AuditService;
 use crate::features::users::UserService;
+use crate::utils::error::Error;
 use crate::utils::token_service::TokenService;
 use actix_cors::Cors;
 use actix_web::{middleware::Logger, web, App, HttpServer};
 use config::traits::Env;
+use features::admin::AdminService;
 use features::clients::EmailClient;
 use features::onboarding::OnboardingService;
 use features::system::ConfigService;
-use features::admin::AdminService;
-use forest_gate::seeding;
+// use forest_gate::seeding;
 use infrastructure::persistence::{db, redis};
 use swagger::ApiDoc;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::features::clients::MaxMindClient;
+use crate::features::clients::{MaxMindClient, OpenRouterClient, OrMessage};
 use crate::features::onboarding::types::AppState;
 use crate::features::onboarding::utils::RateLimiter;
-use crate::features::ws::job::flush_worker;
 
 // use crate::features::ws::ws_upgrade;
 use crate::utils::crypto::ClientHMAC;
@@ -39,6 +40,24 @@ async fn main() -> std::io::Result<()> {
         .with_target(true)
         .with_line_number(true)
         .init();
+
+    // let msgs = vec![
+    //     OrMessage {
+    //         role: "system".into(),
+    //         content: "You are a helpful assistant.".into(),
+    //     },
+    //     OrMessage {
+    //         role: "user".into(),
+    //         content: "Say hello!".into(),
+    //     },
+    // ];
+    // Create client from env and call
+    let openrouter_client = OpenRouterClient::from_env().expect("openrouter client error.");
+    // let text = openrouter_client
+    //     .chat_text(&msgs, Some("deepseek/deepseek-chat-v3.1:free"), Some(0.2), Some(200))
+    //     .await;
+    // println!("AI: {}", text.expect("expected some response"));
+
     // region settings
     let email_client = EmailClient::from_env().expect("email client config");
     let pg_settings = config::DbSettings::from_env().expect("Failed to load settings");
@@ -54,18 +73,22 @@ async fn main() -> std::io::Result<()> {
     // endregion persistence
 
     // seeding::run(&db_pool).await.expect("seeding failed");
-    tokio::spawn(flush_worker(redis_pool.clone()));
 
     // region services
     let hmac_client = make_hmac_from_env();
     let onboarding_service =
         OnboardingService::new(hmac_client, db_pool.clone(), redis_pool.clone());
-
+    // ATTENTION!!!
+    // CONFIG SET notify-keyspace-events Ex
+    // CONFIG GET notify-keyspace-events
+    // THIS MUST BE EXECUTED BEFORE MAKING SURE YOU COULD FLUSH THE EVENTS FROM REDIS
+    // OR JUST ADD TO redis.conf:
+    // notify-keyspace-events Ex
+    let audit_service = AuditService::new(redis_pool.clone());
+    audit_service.spawn_inactivity_flusher(&redis_settings.redis_url);
+    let config_service = Arc::new(ConfigService::new(db_pool.clone(), redis_pool.clone()));
     let issuer = env::var("AUTH_ISSUER").unwrap_or_else(|_| "my-issuer".into());
     let audience = env::var("AUTH_AUDIENCE").unwrap_or_else(|_| "my-audience".into());
-
-    let config_service = Arc::new(ConfigService::new(db_pool.clone(), redis_pool.clone()));
-
     let token_service = Arc::new(
         TokenService::new(config_service.clone(), issuer, audience).expect("init TokenService"),
     );
@@ -101,10 +124,12 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(app_state.clone())
             .app_data(web::Data::new(email_client.clone()))
+            .app_data(web::Data::new(openrouter_client.clone()))
             .app_data(web::Data::new(db_pool.clone()))
             .app_data(web::Data::new(redis_pool.clone()))
             .app_data(web::Data::new(config_service.clone()))
             .app_data(web::Data::new(onboarding_service.clone()))
+            .app_data(web::Data::new(audit_service.clone()))
             .app_data(web::Data::new(user_service.clone()))
             .app_data(web::Data::new(admin_service.clone()))
             .wrap(Logger::default())
@@ -129,7 +154,8 @@ async fn main() -> std::io::Result<()> {
                     .service(features::onboarding::otp_verification)
                     .service(features::onboarding::user_details)
                     .service(features::users::login)
-                    .service(features::admin::users),
+                    .service(features::admin::users)
+                    .service(features::audits::audit_batch),
             )
         // .service(
         //     web::scope("/ws")
