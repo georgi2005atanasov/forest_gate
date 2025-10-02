@@ -2,8 +2,7 @@ use crate::utils::error::{Error, Result};
 use deadpool_redis::redis::{self, aio::PubSub, AsyncCommands};
 use deadpool_redis::Pool;
 use futures::StreamExt;
-use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
+use sqlx::{Connection, PgConnection};
 
 #[derive(Clone)]
 pub struct AuditService {
@@ -50,10 +49,11 @@ impl AuditService {
     /// When a timer key expires, we read & log the events and then delete them.
     ///
     /// `redis_url` should be the same Redis instance as the pool (e.g. from REDIS_URL).
-    pub fn spawn_inactivity_flusher(&self, redis_url: &str) {
+    pub fn spawn_inactivity_flusher(&self, redis_url: &str, pg_url: &str) {
         let redis_url = redis_url.to_owned();
+        let pg_url = pg_url.to_owned();
         tokio::spawn(async move {
-            if let Err(e) = run_flusher(redis_url).await {
+            if let Err(e) = run_flusher(redis_url, pg_url).await {
                 tracing::error!("audit flusher stopped with error: {e:?}");
             }
         });
@@ -78,12 +78,14 @@ fn parse_interaction_id_from_timer_key(timer_key: &str) -> Option<String> {
     }
 }
 
-async fn run_flusher(redis_url: String) -> Result<()> {
-    let client = redis::Client::open(redis_url.clone())
+async fn run_flusher(redis_url: String, pg_url: String) -> Result<()> {
+    let redis_client = redis::Client::open(redis_url.clone())
         .map_err(|e| Error::Unexpected(format!("redis client error: {e}")))?;
 
+    let pg_client = PgConnection::connect(&pg_url).await?;
+
     // PubSub connection (dedicated)
-    let mut pubsub: PubSub = client
+    let mut pubsub: PubSub = redis_client
         .get_async_pubsub()
         .await
         .map_err(|e| Error::Unexpected(format!("redis pubsub conn error: {e}")))?;
@@ -95,7 +97,7 @@ async fn run_flusher(redis_url: String) -> Result<()> {
         .map_err(|e| Error::Unexpected(format!("psubscribe error: {e}")))?;
 
     // Work connection for reads/deletes
-    let mut work_conn = client
+    let mut work_conn = redis_client
         .get_multiplexed_async_connection()
         .await
         .map_err(|e| Error::Unexpected(format!("redis work conn error: {e}")))?;

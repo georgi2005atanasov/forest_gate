@@ -5,7 +5,7 @@ use forest_gate::features::{
     },
     system::{__path_config, __path_health, __path_update_config, __path_version},
     users::__path_login,
-    audits::__path_audit_batch
+    audits::{__path_audit_batch, __path_audit_init}
 };
 
 use utoipa::OpenApi;
@@ -26,6 +26,7 @@ use utoipa::OpenApi;
         with_email,
         login,
         users,
+        audit_init,
         audit_batch
     )
 )]

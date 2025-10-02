@@ -85,7 +85,7 @@ async fn main() -> std::io::Result<()> {
     // OR JUST ADD TO redis.conf:
     // notify-keyspace-events Ex
     let audit_service = AuditService::new(redis_pool.clone());
-    audit_service.spawn_inactivity_flusher(&redis_settings.redis_url);
+    audit_service.spawn_inactivity_flusher(&redis_settings.redis_url, &pg_settings.database_url);
     let config_service = Arc::new(ConfigService::new(db_pool.clone(), redis_pool.clone()));
     let issuer = env::var("AUTH_ISSUER").unwrap_or_else(|_| "my-issuer".into());
     let audience = env::var("AUTH_AUDIENCE").unwrap_or_else(|_| "my-audience".into());
@@ -155,6 +155,7 @@ async fn main() -> std::io::Result<()> {
                     .service(features::onboarding::user_details)
                     .service(features::users::login)
                     .service(features::admin::users)
+                    .service(features::audits::audit_init)
                     .service(features::audits::audit_batch),
             )
         // .service(
