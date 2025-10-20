@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/li
 
 # Use offline metadata produced by `cargo sqlx prepare`
 ENV SQLX_OFFLINE=true
-ARG BIN_NAME=forest_gate   # <— use your actual bin
+ARG BIN_NAME=forest_gate
 
 # Prime dependency cache
 COPY Cargo.toml Cargo.lock ./

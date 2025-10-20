@@ -136,7 +136,7 @@ model = Pipeline(steps=[
     ("iso", IsolationForest(
         n_estimators=300,
         max_samples='auto',
-        contamination=0.02,  # let the model decide proportion of anomalies
+        contamination=0.15,  # let the model decide proportion of anomalies
         random_state=42,
         n_jobs=-1
     ))
